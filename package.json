@@ -1,0 +1,14 @@
+{
+  "name": "crewcial",
+  "version": "0.5.2",
+  "private": true,
+  "description": "Crewcial: astronaut self-assessment prototype (NASA Space Apps Challenge 2026). Not a medical device.",
+  "scripts": {
+    "test": "node --test tests/engine.test.js tests/scenarios.test.js",
+    "scenarios": "CREWCIAL_PRINT=1 node --test --test-reporter=spec tests/scenarios.test.js",
+    "shadow": "node tests/shadow.js",
+    "check:release": "node tests/release-check.js",
+    "e2e": "node tests/e2e.js",
+    "hosted": "node tests/hosted-check.js"
+  }
+}
