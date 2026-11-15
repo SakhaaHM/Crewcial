@@ -147,8 +147,27 @@ scenario('S21 the blood-sugar ladder, checked when something prompts it (decisio
   return out;
 });
 
+const blindTests = [F.rtTest('a', 5, 4.0, { alertness: 8 }), F.rtTest('a', 10, 4.1, { alertness: 7 }), F.rtTest('a', 15, 3.95, { alertness: 8 }), F.rtTest('a', 20, 3.3, { alertness: 8 })];
+const blindRun = evaDay => run({ readings: F.setToday(F.steadyDays('a', 20), 'a', 20, 'sleep', 5), tests: blindTests, symptoms: F.noSymptoms('a', [20]), evaDay });
+scenario('S22 a blind spot the day before a spacewalk is urgent, not an emergency (signed 15 Nov 2026)', {
+  patterns: ['P5 urgent', 'P1 urgent'], overall: 'watch', act: false, route: 'urgent', request: true, why: true
+}, () => {
+  const { res, ctx } = blindRun(21);
+  const sbar = E.buildSbar(res, ctx, C, { name: 'T', role: '' });
+  return { patterns: res.patterns.map(p => p.id + (p.urgent ? ' urgent' : '')), overall: res.overall, act: res.flagged.some(f => f.state === 'act'),
+           route: E.suggestRoute(2, false, res.flagged, ctx.ix),
+           request: /^Urgent, not an emergency\. Requesting a reply from the flight surgeon within 24 hours\./.test(sbar.R),
+           why: res.patterns.every(p => p.supporting.indexOf('A spacewalk is planned tomorrow') !== -1) };
+});
+scenario('S23 the same findings stay on the weekly route unless a spacewalk is today or tomorrow', {
+  none: 'P5,P1 pmc', inThreeDays: 'P5,P1 pmc', today: 'P5 urgent,P1 urgent urgent'
+}, () => {
+  const show = evaDay => { const { res, ctx } = blindRun(evaDay); return res.patterns.map(p => p.id + (p.urgent ? ' urgent' : '')).join(',') + ' ' + E.suggestRoute(2, false, res.flagged, ctx.ix); };
+  return { none: show(null), inThreeDays: show(23), today: show(20) };
+});
+
 test('scenario table is complete', () => {
-  assert.equal(table.length, 21);
+  assert.equal(table.length, 23);
   if (process.env.CREWCIAL_PRINT) {
     console.log('\n| Scenario | Expected | Actual | Pass |\n|---|---|---|---|');
     table.forEach(t => console.log('| ' + t.name + ' | `' + JSON.stringify(t.expected) + '` | `' + JSON.stringify(t.actual) + '` | ' + (JSON.stringify(t.expected) === JSON.stringify(t.actual) ? 'yes' : 'NO') + ' |'));
@@ -246,7 +265,11 @@ test('demo story: the flight engineer shows the fatigue pattern and the blind sp
   assert.equal(res.readiness.level, 'caution');
   assert.equal(res.readiness.evaInDays, 1);
   assert.equal(res.flagged.some(f => f.state === 'act'), false);
+  /* 0.7.0, signed 15 Nov 2026: with her spacewalk tomorrow, both patterns are urgent, not an emergency */
+  assert.deepEqual(res.patterns.map(p => !!p.urgent), [true, true]);
+  assert.equal(E.suggestRoute(2, false, res.flagged, ctx.ix), 'urgent');
   const sbar = E.buildSbar(res, ctx, C, crew);
+  assert.match(sbar.R, /^Urgent, not an emergency\. Requesting a reply from the flight surgeon within 24 hours\./);
   assert.match(sbar.S, /Zahra/);
   assert.doesNotMatch(sbar.A, /placeholders/);   /* 0.4.0: every rule behind her flags is signed */
 });

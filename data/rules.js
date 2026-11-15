@@ -33,8 +33,8 @@
   var NOTE_BAND = 'Stand-in. The band half-width is kept between a smallest value, so that a very steady person does not get a band that is too tight, and a largest value, so that a very variable person is still flagged for a big change. Decide both in Phase 3 (open decision D5).';
 
   return {
-    version: '0.5.0',
-    updated: '2026-11-14',
+    version: '0.7.0',
+    updated: '2026-11-15',
 
     /* How the personal baseline is computed. Open decision D5. */
     baseline: {
@@ -177,9 +177,9 @@
       { id: 'AM-NEW', type: 'amsler', target: 'amsler', minNewSquares: 1, tier: 2, urgentReport: true, status: PR, signed: true, version: 2, sourceIds: ['nasa-vision-2017', 'vision-assess-2023'], note: 'The team physician\'s rule: one or more newly marked squares, compared with the previous map of the same eye, shows Watch, and the report is set to Urgent so it does not wait for the weekly conference. With a headache or a vision symptom the same day it is Act now (P3).' },
 
       /* ---------- Combined patterns ---------- */
-      { id: 'P1', type: 'pattern', target: 'pattern', title: 'Fatigue pattern', tier: 2, shortSleepHours: 6,
-        status: PUB, signed: true, version: 1, sourceIds: ['iss-sleep-study', 'nasa-rst-spinoff', 'almadani-2025'],
-        note: 'Short sleep together with a slower reaction test. The 6-hour figure is a published association in 24 ISS astronauts, not a validated cut-off, signed by the team\'s physician.' },
+      { id: 'P1', type: 'pattern', target: 'pattern', title: 'Fatigue pattern', tier: 2, shortSleepHours: 6, urgentBeforeEvaDays: 1,
+        status: PUB, signed: true, version: 2, sourceIds: ['iss-sleep-study', 'nasa-rst-spinoff', 'almadani-2025'],
+        note: 'Short sleep together with a slower reaction test. The 6-hour figure is a published association in 24 ISS astronauts, not a validated cut-off, signed by the team\'s physician. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency (the physician\'s value, signed 15 Nov 2026).' },
       { id: 'P2', type: 'pattern', target: 'pattern', title: 'Possible infection pattern', tier: 2, tier1WithRedFlag: true,
         status: PR, signed: true, version: 1, sourceIds: ['nasa-hrp-risks', 'stahn-2017'],
         note: 'The team physician\'s pattern: temperature above the personal band together with heart rate above the personal band, with or without breathing or skin symptoms. Act now when a red-flag symptom is also reported.' },
@@ -189,9 +189,9 @@
       { id: 'P4', type: 'pattern', target: 'pattern', title: 'Strain or illness watch', tier: 2,
         status: PR, signed: true, disabled: true, version: 1, sourceIds: ['almadani-2025'],
         note: 'Switched off for the prototype by the team\'s physician: its only citation (Flynn-Evans et al. 2023) is unchecked, and it overlaps P1 and P2. Future work.' },
-      { id: 'P5', type: 'pattern', target: 'pattern', title: 'Blind spot', tier: 2,
-        status: PR, signed: true, version: 1, sourceIds: ['van-dongen-2003', 'iss-sleep-study', 'dev-2024'],
-        note: 'You rate your alertness inside your usual range, but your reaction test is slower than your usual range. On Earth, after 14 days of 6 hours or less in bed, people were largely unaware of their growing deficits (Van Dongen 2003). Whether astronauts show the same blind spot in flight has not been tested. The team physician\'s pattern.' }
+      { id: 'P5', type: 'pattern', target: 'pattern', title: 'Blind spot', tier: 2, urgentBeforeEvaDays: 1,
+        status: PR, signed: true, version: 2, sourceIds: ['van-dongen-2003', 'iss-sleep-study', 'dev-2024'],
+        note: 'You rate your alertness inside your usual range, but your reaction test is slower than your usual range. On Earth, after 14 days of 6 hours or less in bed, people were largely unaware of their growing deficits (Van Dongen 2003). Whether astronauts show the same blind spot in flight has not been tested. The team physician\'s pattern. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency (signed 15 Nov 2026).' }
     ]
   };
 });

@@ -49,11 +49,11 @@ function fixtureRules(over) {
       { id: 'RF-CONFUSION', type: 'redflag', target: 'symptoms', symptomId: 'confusion', tier: 1 },
       { id: 'SY-ANY', type: 'symptom', target: 'symptoms', tier: 2 },
       { id: 'AM-NEW', type: 'amsler', target: 'amsler', minNewSquares: 1, tier: 2, urgentReport: true },
-      { id: 'P1', type: 'pattern', target: 'pattern', title: 'Fatigue pattern', tier: 2, shortSleepHours: 6 },
+      { id: 'P1', type: 'pattern', target: 'pattern', title: 'Fatigue pattern', tier: 2, shortSleepHours: 6, urgentBeforeEvaDays: 1 },
       { id: 'P2', type: 'pattern', target: 'pattern', title: 'Possible infection pattern', tier: 2, tier1WithRedFlag: true },
       { id: 'P3', type: 'pattern', target: 'pattern', title: 'Vision change pattern', tier: 2, tier1WithSymptoms: ['headache', 'vision_change'] },
       { id: 'P4', type: 'pattern', target: 'pattern', title: 'Strain or illness watch', tier: 2 },
-      { id: 'P5', type: 'pattern', target: 'pattern', title: 'Blind spot', tier: 2 }
+      { id: 'P5', type: 'pattern', target: 'pattern', title: 'Blind spot', tier: 2, urgentBeforeEvaDays: 1 }
     ].map(r => Object.assign({ status: 'published', signed: true, version: 1, sourceIds: [] }, r))
   };
   return base;

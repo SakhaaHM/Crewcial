@@ -346,8 +346,14 @@ test('SBAR text names the flags, the rules and the spacewalk, and says it is not
   assert.match(s.B, /Reaction test on mission day 20/);
   assert.match(s.A, /not a diagnosis/);
   assert.match(s.A, /P1/);
-  assert.match(s.R, /next private medical conference/);
+  /* 0.7.0, signed 15 Nov 2026: fatigue the day before a spacewalk is urgent, not an emergency */
+  assert.match(s.R, /^Urgent, not an emergency\. Requesting a reply from the flight surgeon within 24 hours\./);
   assert.match(s.R, /readiness decision/);
+  /* With no spacewalk near, the same findings ask for review at the weekly conference */
+  const ctx2 = F.ctxOf(E, rules, { readings: short, tests: slowTests, symptoms: F.noSymptoms('a', [20]), environment: 'mars' });
+  const s2 = E.buildSbar(E.evaluate(ctx2, C), ctx2, C, { name: 'Test Person', role: 'Engineer' });
+  assert.match(s2.R, /next private medical conference/);
+  assert.doesNotMatch(s2.R, /Urgent/);
   assert.equal(s.tier, 2);
 });
 
