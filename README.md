@@ -44,7 +44,7 @@ more, is. Crewcial is built for that moment.
 Built by Team Crewcial for the NASA Space Apps Challenge 2026, challenge
 "Create Health Monitoring Software for Astronauts on Space Missions".
 
-> **Status: prototype (version 0.5.2, 14 November 2026).**
+> **Status: prototype (version 0.6.2, 15 November 2026).**
 > Crewcial is a hackathon prototype for self-assessment training and research.
 > It is **not a medical device**. It gives advice only and never replaces the
 > crew medical officer or the flight surgeon.
@@ -80,8 +80,8 @@ fictional crew members. A banner says "Simulated data" on every screen.
 - **Typing errors do not raise alarms.** An impossible value asks for a
   re-check instead.
 - **Combined patterns** across indicators: fatigue (short sleep with slower
-  reactions), possible infection, vision change, strain or illness, and the
-  blind spot (see below).
+  reactions), possible infection, vision change, and the blind spot (see
+  below).
 - **Two built-in tests:** a reaction test modelled on the 3-minute PVT-B used
   in NASA's Reaction Self Test, and an Amsler grid for each eye.
 - **How you feel versus how you perform.** Just before each reaction test the
@@ -115,7 +115,8 @@ fictional crew members. A banner says "Simulated data" on every screen.
 | Rule engine (plausibility, limits, personal baseline, patterns) | Built and tested |
 | Reaction test and Amsler grid procedures | Built from published descriptions and signed off |
 | Clinical numbers (limits, band widths, schedules, red flags) | Signed off: each is either from a checked source or labelled as the physician's own value |
-| Guidance texts, learn cards, checklists | **Draft.** Sourced where a source was checked, marked "to be written" where not |
+| Learn cards | All five questions answered for every indicator, each from a checked source or saying that no checked source covers it. Advice lines are marked "Draft" |
+| Guidance texts and crew medical officer checklists | **Draft**, labelled on screen, until the physician's line-by-line review |
 | Demo crew and all demo readings | **Fictional and simulated** by `js/demo.js` |
 | Sending a report | **Simulated.** Nothing leaves the device |
 | Camera input, usability study results | Not built / not done yet |
@@ -146,12 +147,12 @@ The rules are data, not code: they live in `data/rules.js`, each with a status
 
 ## Tests
 
-Results of the last full run, 14 November 2026:
+Results of the last full run, 15 November 2026:
 
 | Command | What it checks | Result |
 |---|---|---|
 | `node --test tests/engine.test.js tests/scenarios.test.js` | Every rule type, 21 written scenarios and the demo story | 87 of 87 pass |
-| `node tests/e2e.js` | A real browser opens the app from disk and walks every screen on phone and laptop sizes, in light and dark | 210 of 210 pass |
+| `node tests/e2e.js` | A real browser opens the app from disk and walks every screen on phone and laptop sizes, in light and dark | 216 of 216 pass |
 | `node tests/hosted-check.js` | The app served as a web page under a strict content policy, and inside a locked-down frame with storage refused | 43 of 43 pass |
 | `node tests/shadow.js` | The rules run over simulated crew-days with injected events | See below |
 | `node tests/release-check.js` | Are all rules sourced and signed off? | Passes: all 47 rules are sourced or the physician's own, and signed |
@@ -174,6 +175,41 @@ come from our own generator, so the numbers say nothing about clinical
 accuracy. The rule settings were not tuned to reach the targets. The simulated
 crews in this run have no alertness ratings, so it does not exercise the
 blind-spot pattern; the unit and scenario tests do.
+
+## Changes in 0.6.2 (15 November 2026)
+
+- Learn answers all five questions again for every indicator. The 12 answers
+  that 0.6.1 hid are written from the app's checked sources; where no checked
+  source covers a question (blood sugar in flight, resting SpO₂ in flight), the
+  answer says so. Advice lines ("What actions prevent a critical condition?")
+  are marked "Draft" until the physician's review.
+- Tests: a browser check that every indicator answers all five questions
+  (216 in all); the data test again requires all five answers.
+
+## Changes in 0.6.1 (15 November 2026)
+
+- Learn no longer shows stand-in wording. The answers to "When does it need
+  the crew or the flight surgeon?" now state the signed rules for blood
+  pressure, heart rate, temperature, mood, blood sugar, SpO₂, the Amsler grid
+  and symptoms, with their sources. Questions with no checked source yet are
+  hidden instead of saying "to be written".
+- Tests: a browser check opens every Learn page and fails on "to be written",
+  "Phase 3" or "placeholder" (215 in all).
+
+## Changes in 0.6.0 (15 November 2026)
+
+- The astronaut figure is drawn to scale: about 7.5 heads tall, with the hip
+  joints a little above half the height and the fingertips at mid-thigh. The
+  torso, legs, arms and every organ were re-placed to match.
+- Bones and muscles now shows the lumbar spine, the pelvis, both legs with the
+  kneecap in front of the femur's two condyles, and the thigh and calf
+  muscles. The hip and the lumbar spine lose the most bone in flight, and the
+  thigh and calf lose the most muscle. The muscles show only when the system
+  is lit, so the calm figure stays simple.
+- The suit's shoulders are rebuilt: each arm hangs from a shoulder cap over
+  the hard upper torso, with a shoulder bearing, in place of round caps.
+- The code licence is Apache 2.0 (`LICENSE.txt`).
+- Tests: 3 new browser checks (214 in all).
 
 ## Changes in 0.5.2 (14 November 2026)
 
@@ -325,6 +361,7 @@ js/figure.js        the astronaut figure on the home screen
 js/app.js           screens and navigation
 tests/              the five checks listed above
 licenses/           licence of the embedded typeface
+LICENSE.txt         the code licence (Apache 2.0)
 ```
 
 There is no build step and no outside library. Everything is plain HTML, CSS
@@ -347,6 +384,9 @@ Space Apps asks teams to say how AI tools were used.
 - The demo video's visuals and background music were generated with AI, and
   the video carries an "AI-generated visuals" watermark. The voice is the
   team's own.
+- Claude also summarised some sources, drafted this README and drafted the
+  app's texts from the values the physician entered. She edited them and made
+  the final choices.
 - Clinical rules, thresholds and guidance are chosen and signed off by the
   team's aerospace-medicine physician. All 47 rules are signed; texts still in
   review are marked as drafts.
@@ -368,8 +408,8 @@ and analogue settings.
 - **Typeface.** Barlow Semi Condensed, Copyright 2017 The Barlow Project
   Authors, SIL Open Font License 1.1. The licence text is in
   `licenses/Barlow-OFL-1.1.txt`.
-- **Code licence.** Not chosen yet. The team decides before the repository is
-  made public.
+- **Code licence.** Apache License 2.0; the full text is in `LICENSE.txt`. The
+  typeface keeps its own licence.
 
 Crewcial is a challenge entry. It is not affiliated with or endorsed by NASA
 or any space agency. It uses no NASA logos or mission emblems.

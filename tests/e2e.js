@@ -58,6 +58,20 @@ async function noSideScroll(page, label) {
   /* 0.5.1: a realistic astronaut per crew member; the flagged body system is lit */
   check('the figure is named for the crew member shown', /^Zahra, astronaut figure/.test(await page.getAttribute('.bodyfig svg', 'aria-label') || ''));
   check('Zahra is drawn as a woman, with her brain lit as Watch', (await page.locator('.bodyfig svg[data-figure="f"]').count()) === 1 && (await page.locator('.bodyfig a.bp--watch[href="#region-brain"]').count()) === 1 && (await page.locator('.bodyfig a.bp--watch').count()) === 1);
+  check('the figure is to scale: Bones and muscles shows the lumbar spine, the pelvis, both kneecaps, and the thigh and calf muscles', await page.evaluate(() => {
+    var a = document.querySelector('.bodyfig a[href="#region-msk"]');
+    return !!a && a.querySelectorAll('.bp-spine').length === 1 && a.querySelectorAll('.bp-pelvis').length === 2 && a.querySelectorAll('.bp-patella').length === 2 && a.querySelectorAll('.bp-muscle').length === 2;
+  }));
+  check('muscles stay hidden while Bones and muscles is in range, so the calm figure stays simple', await page.evaluate(() => {
+    var m = document.querySelector('.bodyfig a.bp--ok[href="#region-msk"] .bp-muscle');
+    return !!m && getComputedStyle(m).opacity === '0';
+  }));
+  check('each kneecap sits in front of the femur, above the tibia', await page.evaluate(() => {
+    var a = document.querySelector('.bodyfig a[href="#region-msk"]'), p = a.querySelector('.bp-patella').getBBox();
+    var shapes = Array.prototype.slice.call(a.querySelectorAll('.bp-shape')).filter(function (e) { return !/bp-(muscle|patella|spine|pelvis)/.test(e.getAttribute('class')); });
+    var femur = shapes[0].getBBox(), tibia = shapes[2].getBBox();
+    return p.y + p.height / 2 < femur.y + femur.height && p.y + p.height <= tibia.y + 2 && femur.y + femur.height > p.y;
+  }));
   check('the suit, face and helmet ignore taps', await page.evaluate(() => ['.fig-art', '.fig-glass'].every(s => getComputedStyle(document.querySelector(s)).pointerEvents === 'none')));
   await page.click('.bodyfig a[href="#region-brain"] .bp-shape');
   await sleep(150);
@@ -256,6 +270,17 @@ async function noSideScroll(page, label) {
   check('the Rules screen writes every source out in full', sourcedRules > 0 && (await page.locator('.rules p.src').count()) >= sourcedRules && (await page.locator('.rules details.srcs').count()) === 0, sourcedRules + ' sourced rules');
   await goto(page, 'learn-bp');
   check('learn answers the five questions, one fold-out each', (await page.locator('main details.card.qa').count()) === 5);
+  { /* 0.6.1: no Learn page says "to be written", "Phase 3" or "placeholder" */
+    const stale = [];
+    for (const id of ['bp', 'hr', 'temp', 'sleep', 'mood', 'glucose', 'spo2', 'rt', 'amsler', 'symptoms']) {
+      await goto(page, 'learn-' + id);
+      const t = await page.evaluate(() => { document.querySelectorAll('main details').forEach(d => { d.open = true; }); return document.querySelector('main').textContent; });
+      if (/to be written|phase 3|placeholder/i.test(t)) { stale.push(id); }
+    }
+    check('no Learn page shows stand-in wording', stale.length === 0, stale.join(', '));
+    check('every indicator answers all five Learn questions, none left empty (0.6.2)', await page.evaluate(() => window.Crewcial.Content.indicators.every(function (i) { return ['q1', 'q2', 'q3', 'q4', 'q5'].every(function (q) { return i.learn[q] && i.learn[q].text.length > 5; }); })));
+    await goto(page, 'learn-bp');
+  }
   await page.focus('a.skip'); await page.keyboard.press('Enter'); await sleep(100);
   check('the skip link moves focus without leaving the screen', (await page.evaluate(() => location.hash + '|' + document.activeElement.id)) === '#learn-bp|main');
   await goto(page, 'setup');

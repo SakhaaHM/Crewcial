@@ -24,14 +24,19 @@
     f: { body: 'f', skin: '#c48e69', shade: '#a2704e', hair: 'bun', hairColor: '#2a211d', beard: false },
     m: { body: 'm', skin: '#b7815f', shade: '#956348', hair: 'short', hairColor: '#221b17', beard: false }
   };
-  /* Body shapes. f and m differ in shoulders, waist, arms and face. */
+  /* Body shapes, drawn to scale (0.6.0): the figure is about 7.5 heads tall, the hip
+     joint sits a little above half the height, and the fingertips reach mid-thigh.
+     From the ground (y 421) up, in body heights: knee 0.28, crotch 0.47, wrist 0.48,
+     waist 0.6, elbow 0.62, shoulder 0.8, chin 0.87. f and m differ in shoulders,
+     waist, arms and face. arm and leg are axes (shoulder or hip joint down to the
+     wrist or ankle); armW and legW are the suit's half-widths along them. */
   var BODY = {
-    f: { sh: 43, chest: 37, waist: 29, hip: 35, organK: 1,
-         arm: [[66, 121], [62, 155], [57.5, 190], [54.5, 220], [52.5, 250]], armW: [12.5, 12.5, 11.5, 11, 9.5],
-         leg: [[91, 266], [90, 300], [89.5, 336], [89.5, 365], [90, 390]], legW: [17, 15.5, 13.5, 12, 10] },
-    m: { sh: 49, chest: 42, waist: 35, hip: 36, organK: 1.12,
-         arm: [[60, 121], [56, 155], [50.5, 190], [47.5, 220], [45.5, 250]], armW: [14, 14, 13, 12.5, 10.5],
-         leg: [[90.5, 266], [89.5, 300], [89, 336], [89, 365], [89.5, 390]], legW: [18, 16.5, 14, 12.5, 10.5] }
+    f: { sh: 52, chest: 36, waist: 28.5, hip: 34, organK: 1,
+         arm: [[70, 120], [67.5, 148], [65, 176], [63.5, 205], [62.5, 233]], armW: [12, 11.5, 10.5, 10, 9],
+         leg: [[91, 222], [90, 262], [89.5, 306], [89.5, 352], [90, 394]], legW: [16.5, 15, 13, 11.5, 10] },
+    m: { sh: 57, chest: 41, waist: 34, hip: 34.5, organK: 1.12,
+         arm: [[65, 120], [62, 148], [59.5, 176], [58, 205], [57, 233]], armW: [13.5, 13, 12, 11, 10],
+         leg: [[90.5, 222], [89.5, 262], [89, 306], [89, 352], [89.5, 394]], legW: [17.5, 16, 13.5, 12, 10.5] }
   };
 
   /* ---------- Small helpers ---------- */
@@ -121,11 +126,27 @@
 
   /* ---------- The suit (decoration) ---------- */
   function torsoPath(b) {
-    var L = [[86, 98], [CX - b.sh + 7, 102], [CX - b.sh, 112], [CX - b.sh + 1, 126], [CX - b.chest, 140], [CX - b.chest, 170],
-             [CX - b.chest + 3, 200], [CX - b.waist, 228], [CX - b.waist + 0.5, 242], [CX - b.hip + 1.5, 256], [CX - b.hip, 270],
-             [CX - b.hip + 2.5, 284], [96, 290]];
+    var L = [[84, 100.5], [CX - b.sh + 14, 104.5], [CX - b.sh + 6, 110], [CX - b.sh + 4, 120], [CX - b.chest - 1, 133],
+             [CX - b.chest, 146], [CX - b.chest + 1, 160], [CX - b.waist, 178], [CX - b.waist + 0.5, 190], [CX - b.hip + 1.5, 203],
+             [CX - b.hip, 215], [CX - b.hip + 2.5, 226], [97, 235]];
     var R = L.slice().reverse().map(function (p) { return [2 * CX - p[0], p[1]]; });
-    return spline([[CX, 96]].concat(L, [[CX, 292]], R), true);
+    return spline([[CX, 99.5]].concat(L, [[CX, 237]], R), true);
+  }
+  /* A sleeve: the arm with its shoulder cap, which sits over the hard upper torso like
+     a real suit's arm assembly. Its inner edge over the shoulder is the scye seam. */
+  function sleevePath(b, side) {
+    var ax = b.arm, w = b.armW, out = [], inn = [];
+    for (var i = 1; i < ax.length; i++) {
+      var a = ax[i - 1], c = ax[Math.min(i + 1, ax.length - 1)];
+      var dx = c[0] - a[0], dy = c[1] - a[1], len = Math.sqrt(dx * dx + dy * dy) || 1, nx = dy / len, ny = -dx / len;
+      out.push([ax[i][0] - nx * w[i], ax[i][1] - ny * w[i]]);
+      inn.push([ax[i][0] + nx * w[i], ax[i][1] + ny * w[i]]);
+    }
+    var pts = [[CX - b.sh + 15, 103.6], [CX - b.sh + 5, 107.4], [CX - b.sh - 0.4, 115.5]].concat(out, inn.reverse(),
+      [[CX - b.chest + 3.5, 132], [CX - b.chest + 2, 121], [CX - b.sh + 23, 108.6]]);
+    /* Mirrored and reversed, so both sleeves wind the same way as the torso and the skin tint has no holes. */
+    if (side > 0) { pts = pts.map(function (p) { return [2 * CX - p[0], p[1]]; }).reverse(); }
+    return spline(pts, true);
   }
   function glovePath(w, wide, side) {
     /* side -1: left hand (thumb toward the body, on its right); +1: right hand. */
@@ -145,9 +166,9 @@
     return d;
   }
   function bootPath(bx) {
-    return 'M' + n(bx - 10.5) + ' 390 L' + n(bx + 10.5) + ' 390 C' + n(bx + 11.5) + ' 398 ' + n(bx + 14) + ' 404 ' + n(bx + 14) + ' 411' +
+    return 'M' + n(bx - 10.5) + ' 392 L' + n(bx + 10.5) + ' 392 C' + n(bx + 11.5) + ' 399.5 ' + n(bx + 14) + ' 405 ' + n(bx + 14) + ' 411.5' +
            ' C' + n(bx + 14) + ' 417 ' + n(bx + 10) + ' 421 ' + n(bx + 5) + ' 421 L' + n(bx - 5) + ' 421 C' + n(bx - 10) + ' 421 ' + n(bx - 14) + ' 417 ' + n(bx - 14) + ' 411' +
-           ' C' + n(bx - 14) + ' 404 ' + n(bx - 11.5) + ' 398 ' + n(bx - 10.5) + ' 390 Z';
+           ' C' + n(bx - 14) + ' 405 ' + n(bx - 11.5) + ' 399.5 ' + n(bx - 10.5) + ' 392 Z';
   }
 
   function suit(b) {
@@ -155,47 +176,46 @@
     var armL = b.arm, armR = flipAxis(b.arm), legL = b.leg, legR = flipAxis(b.leg);
     /* Life-support backpack, seen behind the shoulders */
     s += ellipse(CX, 421, 58, 4.2, 'f-ground');
-    s += el('rect', { x: CX - b.chest - 2, y: 84, width: 2 * (b.chest + 2), height: 96, rx: 10, 'class': 'f-pack' });
-    /* Legs and boots */
+    s += el('rect', { x: CX - b.chest - 2, y: 84, width: 2 * (b.chest + 2), height: 84, rx: 10, 'class': 'f-pack' });
+    /* Legs and boots: knee bellows at 296-310, ankle bearing at 384 */
     [[legL, -1], [legR, 1]].forEach(function (pair) {
       var ax = pair[0], side = pair[1], last = ax[ax.length - 1];
       s += path(limb(ax, b.legW), side < 0 ? 'f-suit' : 'f-suit f-suit--r') + path(limb(ax, b.legW), 'f-vshade');
-      [326, 333, 340].forEach(function (y) { s += path(arcAcross(ax, b.legW, y, 3.6), 'f-seam'); });
-      s += path('M' + n(at(ax, b.legW, 280).x + side * 7) + ' 280 Q' + n(at(ax, b.legW, 300).x + side * 8) + ' 300 ' + n(at(ax, b.legW, 318).x + side * 6) + ' 318', 'f-fold');
-      s += path('M' + n(at(ax, b.legW, 350).x - side * 5) + ' 350 Q' + n(at(ax, b.legW, 362).x - side * 6.5) + ' 362 ' + n(at(ax, b.legW, 374).x - side * 5) + ' 376', 'f-fold');
-      s += path(band(ax, b.legW, 382, 7, 1.6), 'f-joint');
+      [296, 303, 310].forEach(function (y) { s += path(arcAcross(ax, b.legW, y, 3.6), 'f-seam'); });
+      s += path('M' + n(at(ax, b.legW, 238).x + side * 7) + ' 238 Q' + n(at(ax, b.legW, 258).x + side * 8) + ' 258 ' + n(at(ax, b.legW, 278).x + side * 6) + ' 278', 'f-fold');
+      s += path('M' + n(at(ax, b.legW, 326).x - side * 5) + ' 326 Q' + n(at(ax, b.legW, 340).x - side * 6.5) + ' 340 ' + n(at(ax, b.legW, 354).x - side * 5) + ' 356', 'f-fold');
+      s += path(band(ax, b.legW, 384, 7, 1.6), 'f-joint');
       s += path(bootPath(last[0]), 'f-boot');
       s += el('rect', { x: n(last[0] - 14.6), y: 415.5, width: 29.2, height: 5.6, rx: 2.8, 'class': 'f-sole' });
-      s += path('M' + n(last[0] - 11) + ' 405 Q' + n(last[0]) + ' 401 ' + n(last[0] + 11) + ' 405', 'f-seam');
+      s += path('M' + n(last[0] - 11) + ' 406 Q' + n(last[0]) + ' 402 ' + n(last[0] + 11) + ' 406', 'f-seam');
     });
-    /* Torso */
+    /* Torso: the hard upper torso ends at 160, the waist bearing is at 179-190 */
     var torso = torsoPath(b);
     s += path(torso, 'f-suit') + path(torso, 'f-vshade');
-    s += path('M' + (CX - b.chest + 2) + ' 178 Q' + CX + ' 196 ' + (CX + b.chest - 2) + ' 178', 'f-seam');
-    s += path('M' + (CX - b.waist - 1.5) + ' 229 Q' + CX + ' 234.5 ' + (CX + b.waist + 1.5) + ' 229 L' + (CX + b.waist + 1) + ' 240 Q' + CX + ' 245.5 ' + (CX - b.waist - 1) + ' 240 Z', 'f-joint');
-    s += path('M' + (CX - b.hip + 3) + ' 262 Q' + (CX - 18) + ' 268 ' + (CX - 3) + ' 266 M' + (CX + b.hip - 3) + ' 262 Q' + (CX + 18) + ' 268 ' + (CX + 3) + ' 266', 'f-seam');
-    s += path('M' + CX + ' 246 L' + CX + ' 290', 'f-fold');
-    s += el('circle', { cx: CX - b.waist + 6, cy: 214, r: 3.2, 'class': 'f-joint' }) + el('circle', { cx: CX + b.waist - 6, cy: 214, r: 3.2, 'class': 'f-joint' });
-    /* Arms, shoulder caps, gloves */
-    [[armL, -1], [armR, 1]].forEach(function (pair) {
-      var ax = pair[0], side = pair[1], top = ax[0], wr = ax[ax.length - 1], k = b.armW[0] / 12.5;
-      s += path(limb(ax, b.armW), side < 0 ? 'f-suit' : 'f-suit f-suit--r') + path(limb(ax, b.armW), 'f-vshade');
-      s += el('circle', { cx: n(top[0]), cy: n(top[1] + 1), r: n(b.armW[0] + 1.2), 'class': side < 0 ? 'f-suit' : 'f-suit f-suit--r' });
-      s += el('circle', { cx: n(top[0]), cy: n(top[1] + 1), r: n(b.armW[0] - 3), 'class': 'f-seam' });
-      s += path(band(ax, b.armW, 140, 4.5, 1.4), 'f-joint');
-      [182, 188.5, 195].forEach(function (y) { s += path(arcAcross(ax, b.armW, y, 3), 'f-seam'); });
-      s += path('M' + n(at(ax, b.armW, 206).x - side * 4) + ' 206 Q' + n(at(ax, b.armW, 222).x - side * 5.5) + ' 222 ' + n(at(ax, b.armW, 238).x - side * 4) + ' 240', 'f-fold');
+    s += path('M' + (CX - b.chest + 2) + ' 160 Q' + CX + ' 174 ' + (CX + b.chest - 2) + ' 160', 'f-seam');
+    s += path('M' + (CX - b.waist - 1.5) + ' 179 Q' + CX + ' 184.5 ' + (CX + b.waist + 1.5) + ' 179 L' + (CX + b.waist + 1) + ' 190 Q' + CX + ' 195.5 ' + (CX - b.waist - 1) + ' 190 Z', 'f-joint');
+    s += path('M' + (CX - b.hip + 3) + ' 206 Q' + (CX - 18) + ' 212 ' + (CX - 3) + ' 210 M' + (CX + b.hip - 3) + ' 206 Q' + (CX + 18) + ' 212 ' + (CX + 3) + ' 210', 'f-seam');
+    s += path('M' + CX + ' 196 L' + CX + ' 236', 'f-fold');
+    s += el('circle', { cx: CX - b.waist + 6, cy: 170, r: 3.2, 'class': 'f-joint' }) + el('circle', { cx: CX + b.waist - 6, cy: 170, r: 3.2, 'class': 'f-joint' });
+    /* Sleeves with shoulder caps, the shoulder bearing, elbow bellows, wrist bearing and gloves */
+    var sleeves = [sleevePath(b, -1), sleevePath(b, 1)];
+    [[armL, -1], [armR, 1]].forEach(function (pair, i) {
+      var ax = pair[0], side = pair[1], wr = ax[ax.length - 1], k = b.armW[0] / 12.5;
+      s += path(sleeves[i], side < 0 ? 'f-suit' : 'f-suit f-suit--r') + path(sleeves[i], 'f-vshade');
+      s += path(band(ax, b.armW, 127, 4.6, 1.6), 'f-joint');
+      [166, 172.5, 179].forEach(function (y) { s += path(arcAcross(ax, b.armW, y, 3), 'f-seam'); });
+      s += path('M' + n(at(ax, b.armW, 188).x - side * 4) + ' 188 Q' + n(at(ax, b.armW, 204).x - side * 5.5) + ' 204 ' + n(at(ax, b.armW, 218).x - side * 4) + ' 220', 'f-fold');
       /* Patch on each upper arm: a flag-like tape on the left, a round mission patch on the right */
-      var pa = at(ax, b.armW, 158);
-      if (side < 0) { s += el('rect', { x: n(pa.x - 6), y: 153, width: 12, height: 8, rx: 1.2, 'class': 'f-patch' }) + path('M' + n(pa.x - 6) + ' 155.7 L' + n(pa.x + 6) + ' 155.7 M' + n(pa.x - 6) + ' 158.4 L' + n(pa.x + 6) + ' 158.4', 'f-patch-line'); }
-      else { s += el('circle', { cx: n(pa.x), cy: 157, r: 5.4, 'class': 'f-patch' }) + el('circle', { cx: n(pa.x), cy: 157, r: 3.2, 'class': 'f-patch-line' }) + el('circle', { cx: n(pa.x + 1.3), cy: 155.8, r: 0.9, 'class': 'f-patch-dot' }); }
-      s += path(band(ax, b.armW, 244, 7.5, 1.6), 'f-joint');
+      var pa = at(ax, b.armW, 147);
+      if (side < 0) { s += el('rect', { x: n(pa.x - 6), y: 142, width: 12, height: 8, rx: 1.2, 'class': 'f-patch' }) + path('M' + n(pa.x - 6) + ' 144.7 L' + n(pa.x + 6) + ' 144.7 M' + n(pa.x - 6) + ' 147.4 L' + n(pa.x + 6) + ' 147.4', 'f-patch-line'); }
+      else { s += el('circle', { cx: n(pa.x), cy: 146, r: 5.4, 'class': 'f-patch' }) + el('circle', { cx: n(pa.x), cy: 146, r: 3.2, 'class': 'f-patch-line' }) + el('circle', { cx: n(pa.x + 1.3), cy: 144.8, r: 0.9, 'class': 'f-patch-dot' }); }
+      s += path(band(ax, b.armW, 225, 7.5, 1.6), 'f-joint');
       s += path(glovePath(wr, k, side), 'f-glove') + path(thumbPath(wr, k, side), 'f-glove');
       s += path('M' + n(wr[0] - 3 * k * -side) + ' ' + n(wr[1] + 24) + ' L' + n(wr[0] - 3 * k * -side) + ' ' + n(wr[1] + 32) +
                 ' M' + n(wr[0] + 1 * k * -side) + ' ' + n(wr[1] + 25) + ' L' + n(wr[0] + 1 * k * -side) + ' ' + n(wr[1] + 33.5), 'f-fold');
     });
     return { art: s, torso: torso,
-             upper: [torso, limb(armL, b.armW), limb(armR, b.armW), glovePath(armL[armL.length - 1], b.armW[0] / 12.5, -1), glovePath(armR[armR.length - 1], b.armW[0] / 12.5, 1)].join(' ') };
+             upper: [torso, sleeves[0], sleeves[1], glovePath(armL[armL.length - 1], b.armW[0] / 12.5, -1), glovePath(armR[armR.length - 1], b.armW[0] / 12.5, 1)].join(' ') };
   }
 
   /* ---------- Head, face and hair (decoration) ---------- */
@@ -296,30 +316,73 @@
   function tube(d, cls) { return path(d, 'bp-tube-o ' + cls) + path(d, 'bp-tube-i ' + cls); }
   function organs(b) {
     var k = b.organK, o = {};
-    var lungR = 'M101.5 111 C95.6 111 90.4 118.4 86.4 128.6 C82.4 139 79.6 151.4 78.6 163.8 C78.1 170.2 79.8 174.4 85 173.8 C91 173.2 97 171.6 101.5 170 C103.5 169.2 104.5 167 104.5 164 L104.5 131 C104.5 124.6 104 114.2 101.5 111 Z';
-    var lungL = 'M118.5 111 C124.4 111 129.6 118.4 133.6 128.6 C137.6 139 140.4 151.4 141.4 163.8 C141.9 170.2 140.2 174.4 135 173.8 C131 173.4 127 172.4 123.5 171.2 C121 170.4 119.5 168 120.5 165 C122 160 122.5 155 119.5 151 C117.5 148.5 115.5 146 115.5 140 L115.5 131 C115.5 124.6 116 114.2 118.5 111 Z';
-    var airway = 'M108 104 L112 104 L112 122 C114.2 123.4 116.4 126.2 117.8 129.6 L115.6 130.6 C114.4 128 112.4 125.6 110 124.6 C107.6 125.6 105.6 128 104.4 130.6 L102.2 129.6 C103.6 126.2 105.8 123.4 108 122 Z';
+    /* Chest, to scale (0.6.0): the apices sit just above the clavicles, the bases on the
+       domes of the diaphragm. Right lung (on the viewer's left): three lobes, two fissures.
+       Left lung: two lobes and the cardiac notch. */
+    var lungR = spline([[99, 106], [90.4, 111.6], [84.4, 123.6], [80.8, 139.4], [80, 151.6], [84.6, 156], [92.6, 154], [99.8, 150.8],
+                        [104.2, 146], [104.8, 132], [103.8, 116], [101.8, 108.4]], true);
+    var lungL = spline([[121, 106], [129.6, 111.6], [135.6, 123.6], [139.2, 139.4], [140, 151.6], [135.4, 156], [128.6, 154.6], [123.6, 152.6],
+                        [121.2, 148.6], [122.4, 142.6], [119.4, 136.8], [116, 132.4], [115.2, 123], [116.2, 112], [118.2, 108.4]], true);
+    var airway = 'M108 98 L112 98 L112 116 C114.2 117.4 116.4 120.2 117.8 123.6 L115.6 124.6 C114.4 122 112.4 119.6 110 118.6 C107.6 119.6 105.6 122 104.4 124.6 L102.2 123.6 C103.6 120.2 105.8 117.4 108 116 Z';
     o.lungs = [path(widen(lungR, k), 'bp-shape'), path(widen(lungL, k), 'bp-shape'), path(airway, 'bp-shape'),
-               path(widen('M82.2 146.4 C89 145 96.4 143.4 104.5 141.6 M80.4 161 C88 154.6 96 146 104.5 136.4 M139.6 159 C132 153.6 124 145 115.5 136.4', k), 'bp-detail'),
-               path('M108.6 108 L111.4 108 M108.6 112 L111.4 112 M108.6 116 L111.4 116 M108.6 120 L111.4 120', 'bp-detail')].join('');
-    var heart = 'M104.5 140.6 C104 136 107.6 133.6 111 134.2 C114 134.8 116 133.2 118.6 133.6 C122.6 134.4 125.6 137.8 126.6 142.4 C128.6 151 129 159 125.5 165.5 C123.5 169 120 170.5 117 168.5 C112.5 165.5 107.5 160.5 105 154 C103.8 150 104.8 145 104.5 140.6 Z';
-    o.heart = [path(heart, 'bp-shape'), path('M117.6 136.4 C116.6 146 118.6 157 123.6 166 M108.4 140.8 C110.6 139.6 113 139.2 115.4 140', 'bp-detail')].join('');
-    var liver = 'M79.5 177 C86 172 100 171 113 172.6 C119.5 173.4 123.5 175.2 123 178 C122.6 180.4 118.6 182 113.4 184.6 C106.6 188.2 99 192.6 91.4 196.4 C87 198.6 82.4 199.6 80.2 197.2 C78 194.8 77.4 189.6 77.6 185 C77.8 181.4 78.2 178.6 79.5 177 Z';
-    var stomach = 'M120 177 C122 172.5 132 172 136.5 177 C141 182 141 193 136.5 199.5 C132.5 205 124 207.5 117 204 C113.8 202.4 112.6 199.8 113.4 197.4 C114.2 195.4 116.6 195.2 118.6 195.6 C122 196.2 125.4 194.6 126.6 191 C127.8 187.6 125.4 184 122.6 182.4 C120.4 181.2 119.4 179.2 120 177 Z';
-    var colon = 'M89.6 249 L89.6 215 C89.6 210.6 92.6 208 97 208 L123 208 C127.4 208 130.4 210.6 130.4 215 L130.4 246 C130.4 250 127.6 252 123.6 252 L116 252';
-    var small = 'M99 216.4 L121 216.4 C124 216.4 124 222.8 121 222.8 L99 222.8 C96 222.8 96 229.2 99 229.2 L121 229.2 C124 229.2 124 235.6 121 235.6 L99 235.6 C96 235.6 96 242 99 242 L118 242';
-    o.metabolic = [el('rect', { x: n(CX - 32 * k), y: 174, width: n(64 * k), height: 80, 'class': 'bp-hit' }),
+               path(widen('M81.4 132.6 C89 131.8 96.6 130.6 104.6 129.4 M80.6 147.6 C88 141 96 133 104.6 123.6 M139.4 146.4 C132 140 124 132 115.4 123.6', k), 'bp-detail'),
+               path('M108.6 101.4 L111.4 101.4 M108.6 105.2 L111.4 105.2 M108.6 109 L111.4 109 M108.6 112.8 L111.4 112.8', 'bp-detail')].join('');
+    /* Heart: about 12 cm long, apex down and to the left (the viewer's right) at the 5th intercostal space */
+    var heart = spline([[106.4, 124.6], [103.6, 130], [103.8, 138], [106.8, 144.6], [112, 148.8], [118.6, 151.4], [124.4, 151.2],
+                        [126.2, 145.6], [125.6, 137.6], [122.4, 130], [117.6, 125.2], [111.6, 124]], true);
+    o.heart = [path(heart, 'bp-shape'), path('M116.8 126.4 C116 135 118.2 143.6 122.6 150.4 M106.4 131.4 C109.4 129.8 112.6 129.6 116 130.6', 'bp-detail')].join('');
+    /* Upper abdomen: liver under the right dome, stomach under the left */
+    var liver = spline([[79.4, 152], [86.4, 147.4], [96.4, 146], [106.2, 147], [114.2, 149], [121.6, 151.2], [123, 153.8], [118.2, 156.6],
+                        [110, 160.4], [100, 165.6], [91, 170], [84, 171.4], [79.6, 168.4], [77.8, 161]], true);
+    var stomach = spline([[121.4, 152.4], [127.2, 148.6], [135, 149.6], [140, 155.2], [141, 164], [138.6, 172.6], [133, 178.4], [125, 181],
+                          [117.6, 180], [113, 176.4], [113.6, 172.8], [117.4, 172.6], [122.6, 171.8], [126.6, 167.6], [127.4, 161.4],
+                          [125.4, 157], [121.8, 155.4]], true);
+    /* Colon frame: cecum low on the right, flexures under the liver and the spleen, sigmoid to the midline */
+    var colon = 'M89 222 L89 193.6 C89 189.4 92 187 96.4 187 L123.6 186 C128 186 131 188.6 131 193 L131 217 C131 222 128 225.4 123.6 226.4 L114 229.4';
+    var small = 'M99 195.2 L121 195.2 C124 195.2 124 201 121 201 L99 201 C96 201 96 206.8 99 206.8 L121 206.8 C124 206.8 124 212.6 121 212.6 L99 212.6 C96 212.6 96 218.4 99 218.4 L118 218.4';
+    o.metabolic = [el('rect', { x: n(CX - 25 * k), y: 145, width: n(50 * k), height: 83, 'class': 'bp-hit' }),
                    tube(widen(colon, k), 'bp-tube--colon'), tube(widen(small, k), 'bp-tube--small'),
                    path(widen(stomach, k), 'bp-shape'), path(widen(liver, k), 'bp-shape')].join('');
-    var neck = [[103.4, 85.6, 1.5, 1.9], [103, 91, 1.4, 1.8]], arm = [[CX - b.chest + 4.5, 137.5, 1.8, 2.2], [CX - b.chest + 6.5, 144, 1.6, 2]];
+    var neck = [[103.4, 85.6, 1.5, 1.9], [103, 91, 1.4, 1.8]], arm = [[CX - b.chest + 4.5, 126.5, 1.8, 2.2], [CX - b.chest + 6.5, 132.5, 1.6, 2]];
     function pair(p) { return ellipse(p[0], p[1], p[2], p[3], 'bp-shape bp-node') + ellipse(2 * CX - p[0], p[1], p[2], p[3], 'bp-shape bp-node'); }
     o.immune = '<g transform="' + HEAD_T + '">' + el('rect', { x: 92, y: 74, width: 36, height: 30, 'class': 'bp-hit' }) + neck.map(pair).join('') + '</g>' + arm.map(pair).join('');
-    var femur = 'M91.2 266.2 C93.6 264.4 97.8 265.2 98.6 268.2 C99.2 270.8 97.6 273 95 273.6 C93.4 274 92.6 275.2 92.4 277.4 L92 320.6 C93.4 321 95.4 322.2 95.6 324.6 C95.8 328.6 93 331.4 89.6 331.4 C86.2 331.4 83.6 328.6 84 324.8 C84.2 322.6 85.8 321.2 87.4 320.6 L87.8 277 C87.8 272.6 88.8 268 91.2 266.2 Z';
-    var tibia = 'M84.6 341.5 C84.6 339.8 94.6 339.8 94.6 341.5 C94.6 344.2 93 345.6 92 346.6 L91.8 384 C93.4 384.6 94.2 386.2 93.8 388 C93.4 389.6 91.6 390.4 89.8 390.2 L87.6 390 C86.2 389.8 85.8 388.6 86.4 387.4 L87.6 385.2 L87.4 346.6 C86 345.6 84.6 344 84.6 341.5 Z';
-    var fibula = 'M83 345.2 C83 343.6 85.6 343.6 85.6 345.2 L85.2 386.6 C85.2 387.6 83.2 387.6 83.2 386.6 Z';
-    var legHit = 'M' + (CX - b.hip - 1) + ' 262 L' + (CX - 2) + ' 262 L' + (CX - 2) + ' 422 L' + (CX - b.hip - 6) + ' 422 Z';
-    o.msk = path(both(legHit), 'bp-hit') + [femur, tibia, fibula].map(function (d) { return path(d, 'bp-shape') + path(mirror(d), 'bp-shape'); }).join('') +
-            ellipse(89.6, 336.4, 3.4, 4.2, 'bp-shape') + ellipse(2 * CX - 89.6, 336.4, 3.4, 4.2, 'bp-shape');
+    /* Bones and muscles (0.6.0). Weight-bearing bone is lost fastest in flight at the hip and
+       the lumbar spine, and the antigravity muscles of the thigh and calf shrink the most, so
+       the system shows the lumbar spine, the pelvis, both legs and the thigh and calf muscles.
+       Drawn for the viewer's left side (the right leg) and mirrored. */
+    var thigh = spline([[86, 226.4], [80.8, 236.4], [78.4, 254], [79.2, 274], [82.6, 290.6], [87.2, 296.8], [92.4, 296.4], [97.4, 291.6],
+                        [99.2, 283.4], [98.4, 266], [97, 246], [96.2, 232], [93.6, 226], [89.8, 223.8]], true);
+    var calf = spline([[84.2, 318.6], [80.6, 330], [80, 346], [82.2, 362], [85.8, 373.6], [89.6, 377.4], [93.4, 372], [97, 358],
+                       [97.8, 340], [96.6, 326], [94.2, 318.6], [89.4, 316.8]], true);
+    var femur = spline([[92.6, 208.8], [96.6, 210.8], [97.8, 214.8], [95.8, 218.8], [92.4, 221.4], [91.6, 225.8], [90.4, 231], [90.8, 262],
+                        [91.8, 289.6], [95.2, 297.6], [96, 304.8], [93.8, 310], [91.2, 309.4], [89.6, 307.2], [88, 309.4], [85.4, 310],
+                        [83.2, 305], [83.8, 297.8], [86.6, 289.6], [85.6, 262], [84.8, 232], [82.6, 225], [82.4, 218.4], [85, 215.4],
+                        [88, 216], [89.8, 211.6]], true);
+    var tibia = spline([[83, 313.4], [89.6, 312.2], [96.4, 313.4], [96.8, 316.8], [93.2, 321.4], [91.8, 330], [91.4, 384], [93.4, 392],
+                        [93.6, 398.6], [90.6, 400], [88, 396.6], [87.6, 386], [87.4, 330], [86.4, 322], [83.2, 317.8]], true);
+    var fibula = spline([[80.6, 318.6], [83.4, 318.2], [84.2, 321.6], [83.2, 325], [84.4, 380], [85.4, 392], [85.6, 401.4], [83.2, 403.2],
+                         [81.4, 400.8], [81.8, 392], [82.2, 380], [81, 324.6], [80, 321.4]], true);
+    var hipBone = spline([[100.6, 199], [95, 191.6], [87, 188.6], [80.6, 191.4], [78, 197.6], [80, 204], [83.6, 208.6], [85, 214], [86.6, 221],
+                          [89, 230], [92.4, 236.4], [98, 236.4], [104.4, 233.4], [108.6, 230.4], [108.6, 225], [104, 223], [98.6, 221.4],
+                          [96.6, 216], [97.6, 208], [100.4, 203]], true);
+    var sacrum = spline([[101.4, 198.4], [110, 197.4], [118.6, 198.4], [116.4, 211.6], [113, 223.4], [110, 228], [107, 223.4], [103.6, 211.6]], true);
+    var lumbar = '', procs = '';
+    [160, 167.4, 174.8, 182.2, 189.6].forEach(function (y, i) {
+      var w = 5.4 + i * 0.35;
+      lumbar += 'M' + n(CX - w) + ' ' + n(y + 1) + ' Q' + n(CX - w) + ' ' + n(y) + ' ' + n(CX - w + 1) + ' ' + n(y) + ' L' + n(CX + w - 1) + ' ' + n(y) +
+                ' Q' + n(CX + w) + ' ' + n(y) + ' ' + n(CX + w) + ' ' + n(y + 1) + ' L' + n(CX + w) + ' ' + n(y + 5) + ' Q' + n(CX + w) + ' ' + n(y + 6) + ' ' +
+                n(CX + w - 1) + ' ' + n(y + 6) + ' L' + n(CX - w + 1) + ' ' + n(y + 6) + ' Q' + n(CX - w) + ' ' + n(y + 6) + ' ' + n(CX - w) + ' ' + n(y + 5) + ' Z ';
+      procs += 'M' + n(CX - w - 4.6) + ' ' + n(y + 3) + ' L' + n(CX - w) + ' ' + n(y + 3) + ' M' + n(CX + w) + ' ' + n(y + 3) + ' L' + n(CX + w + 4.6) + ' ' + n(y + 3) + ' ';
+    });
+    var legHit = 'M' + (CX - b.hip - 1) + ' 214 L' + (CX - 2) + ' 214 L' + (CX - 2) + ' 422 L' + (CX - b.hip - 6) + ' 422 Z';
+    o.msk = path(both(legHit), 'bp-hit') + el('rect', { x: CX - 36, y: 156, width: 72, height: 82, 'class': 'bp-hit' }) +
+            path(both(thigh), 'bp-shape bp-muscle') + path(both(calf), 'bp-shape bp-muscle') +
+            path(both('M86.4 240 C85 256 85.6 272 88.6 286 M93.8 240 C95.8 258 96 274 94.4 288 M84 330 C83.2 342 84 354 86.4 366 M95.2 330 C95.8 342 95.2 354 93 366'), 'bp-detail') +
+            path(lumbar, 'bp-shape bp-spine') + path(procs, 'bp-detail') + path(both(hipBone), 'bp-shape bp-pelvis') + path(sacrum, 'bp-shape bp-pelvis') +
+            path('M103.6 204 L116.4 204 M104.8 210 L115.2 210 M106 216 L114 216', 'bp-detail') +
+            ellipse(99.4, 227.6, 3.6, 3.2, 'bp-detail') + ellipse(2 * CX - 99.4, 227.6, 3.6, 3.2, 'bp-detail') +
+            [femur, tibia, fibula].map(function (d) { return path(d, 'bp-shape') + path(mirror(d), 'bp-shape'); }).join('') +
+            ellipse(89.6, 300.6, 4.4, 5.4, 'bp-shape bp-patella') + ellipse(2 * CX - 89.6, 300.6, 4.4, 5.4, 'bp-shape bp-patella');
     var brain = 'M110 26.6 C99.2 25.8 91.6 32.6 91.4 41 C91.3 45.6 94.6 48.2 100.2 47.6 C104.4 47.2 107.6 47.8 110 48.6 C112.4 47.8 115.6 47.2 119.8 47.6 C125.4 48.2 128.7 45.6 128.6 41 C128.4 32.6 120.8 25.8 110 26.6 Z';
     o.brain = '<g transform="' + HEAD_T + '">' + el('rect', { x: 88, y: 12, width: 44, height: 36, 'class': 'bp-hit' }) + path(brain, 'bp-shape') +
               path('M110 27.4 L110 47.8 M95.2 36 C97.6 33.4 100.4 37.4 103.2 34.4 C105 32.6 106.6 33.8 107.6 32.4 M94.2 42.6 C97.2 40.4 99.8 44 103 41.4 C105 39.8 106.4 41.8 108 40.6 M124.8 36 C122.4 33.4 119.6 37.4 116.8 34.4 C115 32.6 113.4 33.8 112.4 32.4 M125.8 42.6 C122.8 40.4 120.2 44 117 41.4 C115 39.8 113.6 41.8 112 40.6', 'bp-detail') + '</g>';

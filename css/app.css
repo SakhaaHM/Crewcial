@@ -202,6 +202,9 @@ main { padding: 4px 16px 24px; max-width: 760px; margin: 0 auto; }
 /* Anatomy lines inside an organ show only when it is lit, so the resting figure stays calm. */
 .bp-detail { fill: none; stroke: var(--organ-line); stroke-width: 0.7; stroke-linecap: round; opacity: 0; }
 .bp-node { stroke: none; fill: var(--organ-line); }
+/* Muscles show only when Bones and muscles is lit, so the calm figure stays simple. */
+.bp-shape.bp-muscle { opacity: 0; }
+.bp--watch .bp-shape.bp-muscle, .bp--act .bp-shape.bp-muscle { opacity: 1; fill-opacity: 0.38; stroke-opacity: 0.7; filter: none; }
 .bp-tube-o, .bp-tube-i { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .bp-tube-o { stroke: var(--organ-line); } .bp-tube-i { stroke: var(--organ-tube); }
 .bp-tube--colon.bp-tube-o { stroke-width: 7.4; } .bp-tube--colon.bp-tube-i { stroke-width: 5.6; }

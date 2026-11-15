@@ -11,7 +11,7 @@
   var E = CW.Engine, C = CW.Content, RULES = CW.Rules, SOURCES = CW.Sources, Demo = CW.Demo, Store = CW.Storage, Charts = CW.Charts, Figure = CW.Figure;
   var ix = E.indexRules(RULES);
   var RELEASE = E.releaseCheck(RULES);
-  var APP_VERSION = '0.5.2';
+  var APP_VERSION = '0.6.2';
   var DAY_MS = 86400000;
   var srcById = {}, indById = {}, regionById = {}, symById = {};
   SOURCES.forEach(function (s) { srcById[s.id] = s; });
@@ -238,7 +238,7 @@
   function whyInSpace(id) {
     var def = indById[id];
     if (!def) { return ''; }
-    var q = def.learn.q3 && !/^To be written/.test(def.learn.q3.text) ? def.learn.q3 : def.learn.q2;
+    var q = def.learn.q3 && def.learn.q3.text ? def.learn.q3 : def.learn.q2;
     return '<div class="why"><h4>Why it matters in space</h4><p>' + esc(q.text) + '</p>' + sourceList(q.sourceIds) + '</div>';
   }
   function tellBlock(tier, behavioural) {
@@ -699,8 +699,9 @@
     var h = '<p class="crumb"><a href="#learn">Learn</a></p><h1>' + esc(def.label) + '</h1><p class="lede">' + esc(def.howTo) + '</p>';
     h += '<p class="ph"><span class="badge badge--placeholder">Draft</span> Awaiting the physician\'s review.</p>';
     ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(function (q) {
-      var a = def.learn[q], tbd = /To be written/.test(a.text);
-      h += '<details class="card qa' + (tbd ? ' card--tbd' : '') + '"><summary>' + esc(C.learnQuestions[q]) + '</summary><p>' + esc(a.text) + '</p>' + sourceList(a.sourceIds) + '</details>';
+      var a = def.learn[q];
+      if (!a || !a.text) { return; } /* 0.6.1: no checked source yet, so the question is hidden */
+      h += '<details class="card qa"><summary>' + esc(C.learnQuestions[q]) + '</summary><p>' + esc(a.text) + '</p>' + sourceList(a.sourceIds) + '</details>';
     });
     return h;
   };

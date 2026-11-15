@@ -11,7 +11,6 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var TBD = 'To be written and sourced in Phase 3 (scientific design).';
   var MED = 'Take medication only as directed by the flight surgeon or the on-board medical protocol.';
 
   return {
@@ -32,7 +31,7 @@
       lineage: 'Crewcial is its own concept. Its author\'s earlier work, an MSc dissertation at King\'s College London (2025), covered physiological monitoring in spacesuits and other spaceflight and analogue settings.',
       siDisclosure: [
         'The code, the demo-data generator and the body figure were generated with AI assistance and then tested.',
-        'Clinical rules, thresholds and guidance are chosen and signed off by the team\'s aerospace-medicine physician. Any rule still awaiting her sign-off is marked as a placeholder.',
+        'Clinical rules, thresholds and guidance are chosen and signed off by the team\'s aerospace-medicine physician. Every rule in this version is signed.',
         'In demo mode, every crew member and every health reading is fictional and simulated.'
       ],
       medication: MED
@@ -140,8 +139,8 @@
           q1: { text: 'Yes. A 24-hour blood pressure recorder has been worn on the ISS, and the Canadian Space Agency\'s Bio-Monitor shirt measures blood pressure there.', sourceIds: ['norsk-2015', 'csa-biomonitor'] },
           q2: { text: 'Weightlessness changes circulation and the way the heart and blood vessels work.', sourceIds: ['nasa-hrp-risks'] },
           q3: { text: 'On 3 to 6-month ISS flights, 24-hour blood pressure ran 8 to 10 mmHg lower than before flight. An Earth "normal" can therefore mislead, so Crewcial compares each reading with your own in-flight range.', sourceIds: ['norsk-2015'] },
-          q4: { text: 'A sustained change from your own range shows as Watch and goes into your next private medical conference report. A reading beyond an absolute limit shows as Act now. The limits themselves are placeholders until Phase 3.', sourceIds: [] },
-          q5: { text: 'Exercise counteracts losses in heart and blood-vessel fitness. Specific steps: ' + TBD, sourceIds: ['nasa-hrp-risks'] }
+          q4: { text: 'A lasting change from your own range shows as Watch and goes into your next private medical conference report. Act now: systolic above 180 or diastolic above 120 mmHg (the 2025 AHA/ACC line for severe hypertension), or systolic 90 or below (NEWS2). The card asks you to measure again first. Readings taken after exercise or caffeine are not judged.', sourceIds: ['aha-acc-2025', 'rcp-news2', 'aha-bp-measure'] },
+          q5: { text: 'Draft: exercise counteracts losses in heart and blood-vessel fitness, and ISS crews exercise every day. Measure the same way each day, rested, so a real change stands out. Take medicines only as directed by the flight surgeon or the on-board protocol.', sourceIds: ['nasa-hrp-risks', 'nasa-iss-exercise', 'aha-bp-measure'] }
         } },
       { id: 'hr', label: 'Resting heart rate', unit: 'bpm', schedule: 'daily', region: 'heart',
         parts: [ { key: 'hr', label: 'Beats per minute', min: 25, max: 230, step: 1, start: 60 } ],
@@ -150,8 +149,8 @@
           q1: { text: 'Yes. The Canadian Space Agency\'s Bio-Monitor shirt records pulse and the heart\'s electrical activity on the ISS.', sourceIds: ['csa-biomonitor'] },
           q2: { text: 'Weightlessness changes circulation and the way the heart and blood vessels work. Resting heart rate is a simple daily check on the heart.', sourceIds: ['nasa-hrp-risks'] },
           q3: { text: 'In the ISS study that found lower blood pressure, 24-hour heart rate did not change. Crewcial compares your heart rate with your own in-flight range.', sourceIds: ['norsk-2015'] },
-          q4: { text: 'A sustained change from your own range shows as Watch. A reading beyond an absolute limit shows as Act now. The limits are placeholders until Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q4: { text: 'A lasting change from your own range shows as Watch. Act now at 131 bpm or more, or 40 or less (NEWS2). Fit crew can have a slow heart, so the flight surgeon can set your low limit anywhere from 30 to 40.', sourceIds: ['rcp-news2', 'drezner-2017'] },
+          q5: { text: 'Draft: daily exercise keeps the heart fit in flight. Measure rested, before exercise and caffeine, so a real change stands out. A fast or slow heart with chest pain or fainting is Act now.', sourceIds: ['nasa-iss-exercise', 'aha-bp-measure'] }
         } },
       { id: 'temp', label: 'Body temperature', unit: '°C', schedule: 'daily', region: 'immune',
         parts: [ { key: 'temp', label: 'Degrees Celsius', min: 33, max: 43, step: 0.1, start: 36.8 } ],
@@ -160,8 +159,8 @@
           q1: { text: 'Yes. Core body temperature has been measured in astronauts at rest and during exercise on the ISS, and the Bio-Monitor shirt records skin temperature.', sourceIds: ['stahn-2017', 'csa-biomonitor'] },
           q2: { text: 'The stress of spaceflight may wake dormant viruses. Body temperature is one of the body\'s signals of infection.', sourceIds: ['nasa-hrp-risks'] },
           q3: { text: 'On long ISS flights, resting core temperature rose by about 1 °C over roughly 2.5 months, and it climbed higher and faster during exercise than on Earth. Earth fever limits may therefore mislead, so Crewcial compares with your own in-flight range.', sourceIds: ['stahn-2017'] },
-          q4: { text: 'A sustained rise from your own range shows as Watch. Together with a raised heart rate it shows the possible-infection pattern. The limits are placeholders until Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q4: { text: 'A lasting rise from your own range shows as Watch. Together with a raised heart rate it shows the possible-infection pattern. 39.1 °C or more is urgent, not an emergency: tell the crew medical officer today. 35.0 °C or less is Act now. Readings taken after exercise are not judged.', sourceIds: ['rcp-news2'] },
+          q5: { text: 'Draft: report a rise early, so the flight surgeon sees it before it grows. Re-measure at rest, because exercise raises core temperature faster in flight than on Earth.', sourceIds: ['stahn-2017', 'nasa-3001-medops'] }
         } },
       { id: 'sleep', label: 'Sleep', unit: 'h', schedule: 'daily', region: 'brain',
         parts: [ { key: 'sleep', label: 'Hours slept last night', min: 0, max: 16, step: 0.25, start: 7 } ],
@@ -184,18 +183,18 @@
           q1: { text: 'Yes. On the ISS, astronauts rated stress, workload and tiredness on sliding scales as part of the Reaction Self Test, and NASA\'s ARCHeR study uses behavioral surveys.', sourceIds: ['iss-sleep-study', 'nasa-archer'] },
           q2: { text: 'Isolation, radiation and distance from Earth may affect crew mental health.', sourceIds: ['nasa-hrp-risks'] },
           q3: { text: 'Hazards add up. In ISS astronauts, short sleep went with higher stress ratings.', sourceIds: ['iss-sleep-study', 'nasa-hrp-hazards'] },
-          q4: { text: 'A lasting drop from your own range shows as Watch. You can route it to the private psychological conference instead of the medical one. The scale itself is a placeholder until a validated one is chosen in Phase 3.', sourceIds: ['nasa-crewtime'] },
-          q5: { text: TBD, sourceIds: [] }
+          q4: { text: 'A lasting drop from your own range shows as Watch. You can route it to the private psychological conference instead of the medical one. The 0 to 100 scales follow the survey in NASA\'s Reaction Self Test; they are not a validated clinical scale.', sourceIds: ['nasa-crewtime'] },
+          q5: { text: 'Draft: protect your sleep, because short sleep went with higher stress in ISS astronauts. Talk early: the flight surgeon or psychologist can be reached privately.', sourceIds: ['iss-sleep-study', 'nasa-crewtime'] }
         } },
       { id: 'glucose', label: 'Blood sugar', unit: 'mg/dL', schedule: 'indicated', region: 'metabolic',
         parts: [ { key: 'glucose', label: 'Milligrams per decilitre', min: 20, max: 600, step: 1, start: 90 } ],
         howTo: 'Add it if you feel shaky, sweaty, confused or very thirsty, or if the crew medical officer asks.',
         learn: {
-          q1: { text: 'The challenge brief names blood sugar as a useful indicator. How it is measured in flight: ' + TBD, sourceIds: [] },
+          q1: { text: 'The challenge brief names blood sugar as a useful indicator. A finger-stick meter needs one drop of blood and no network, so it can be used anywhere. No source checked for Crewcial describes its routine use on the ISS, so Crewcial asks for it only when something prompts it.', sourceIds: [] },
           q2: { text: 'Crews on deep-space missions need balanced, appealing, long-lasting meals, and poor nutrition is a recognised risk.', sourceIds: ['nasa-hrp-risks'] },
-          q3: { text: TBD, sourceIds: [] },
-          q4: { text: 'The ranges shown are placeholders until Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q3: { text: 'No source checked for Crewcial measured blood sugar in flight, so Crewcial uses the range healthy adults spend most of the day in on continuous monitors.', sourceIds: ['shah-2019'] },
+          q4: { text: 'It is checked only when something prompts it. In range: 70 to 140 mg/dL. From 141 to 199, measure again first. 200 or more is urgent, not an emergency. From 54 to 69 shows Watch: eat 15 g of fast-acting sugar and measure again after 15 minutes. Below 54, treat it now; it is urgent.', sourceIds: ['ada-2026-s6', 'ada-2026-s2', 'ada-2025-s16'] },
+          q5: { text: 'Draft: eat regular, balanced meals. If it is below 70, take 15 g of fast-acting sugar and measure again after 15 minutes.', sourceIds: ['ada-2026-s6', 'nasa-hrp-risks'] }
         } },
       { id: 'spo2', label: 'Blood oxygen (SpO₂)', unit: '%', schedule: 'indicated', region: 'lungs',
         parts: [ { key: 'spo2', label: 'Percent', min: 50, max: 100, step: 1, start: 98 } ],
@@ -203,9 +202,9 @@
         learn: {
           q1: { text: 'Yes. The Bio-Monitor shirt records blood oxygen saturation on the ISS.', sourceIds: ['csa-biomonitor'] },
           q2: { text: 'Steps taken to avoid decompression sickness on spacewalks may raise the risk of mildly low tissue oxygen.', sourceIds: ['nasa-hrp-risks'] },
-          q3: { text: TBD, sourceIds: [] },
-          q4: { text: 'The ranges shown are placeholders until Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q3: { text: 'No source checked for Crewcial reports a change in resting blood oxygen in flight, so Crewcial uses the range for healthy adults and checks it only when something prompts it.', sourceIds: ['bts-2017'] },
+          q4: { text: 'In range: 96 to 100%. Below 96% shows Watch. 91% or less is Act now (NEWS2).', sourceIds: ['rcp-news2', 'bts-2017'] },
+          q5: { text: 'Draft: keep your hand still and warm for a good reading. If it is low with breathlessness, chest symptoms or a fever, tell the crew medical officer.', sourceIds: ['bts-2017'] }
         } },
       { id: 'rt', label: 'Reaction test', unit: '', schedule: 'scheduled', region: 'brain', parts: [],
         howTo: 'A 3-minute test. Tap as soon as the counter starts. Use the same device each time.',
@@ -222,17 +221,17 @@
           q1: { text: 'Yes. On the ISS the Amsler grid is done on a laptop. It is one of the routine vision checks, with visual acuity and a symptom questionnaire.', sourceIds: ['nasa-vision-2017', 'nasa-vision-2018', 'vision-assess-2023'] },
           q2: { text: 'The structure of the eye and brain can change in flight (SANS). A grid test can show distortion in central vision.', sourceIds: ['nasa-hrp-risks', 'statpearls-amsler'] },
           q3: { text: 'In weightlessness, blood and fluid shift from the lower to the upper body. NASA is testing whether thigh cuffs that keep fluid in the legs can prevent these eye changes.', sourceIds: ['norsk-2015', 'nasa-hrp-research'] },
-          q4: { text: 'A newly marked square, compared with your last map of the same eye, is reported to the flight surgeon. Whether that is Watch or Act now is an open decision for Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q4: { text: 'A newly marked square, compared with your last map of the same eye, shows as Watch, and the report goes to the flight surgeon as Urgent. A change in vision that you notice yourself is a red flag: Act now.', sourceIds: [] },
+          q5: { text: 'Draft: test each eye on schedule, at the same distance and in the same light, so a change stands out. Report a new distortion the same day, so the flight surgeon can arrange the on-board eye exams.', sourceIds: ['statpearls-amsler', 'nasa-vision-2018'] }
         } },
       { id: 'symptoms', label: 'Symptom check', unit: '', schedule: 'daily', region: null, parts: [],
         howTo: 'Tap the part of the body that bothers you, or confirm that you have no symptoms today.',
         learn: {
           q1: { text: 'Yes. It needs no equipment.', sourceIds: [] },
           q2: { text: 'Many likely in-flight problems are things you feel, not things a device measures. In the sample output of a NASA medical model, the most likely conditions include trouble sleeping, skin abrasion, skin rash, eye abrasion and headache.', sourceIds: ['nasa-3001-appe'] },
-          q3: { text: TBD, sourceIds: [] },
-          q4: { text: 'A red-flag symptom shows as Act now whatever your readings are. The red-flag list is a placeholder until Phase 3.', sourceIds: [] },
-          q5: { text: TBD, sourceIds: [] }
+          q3: { text: 'Each hazard brings its own problems: isolation and confinement can affect sleep and mood, a closed environment can spread germs, and the shift of fluids in weightlessness can change vision.', sourceIds: ['nasa-hrp-hazards', 'nasa-hrp-risks'] },
+          q4: { text: 'A red-flag symptom shows as Act now whatever your readings are: chest pain, fainting or near-fainting, a new change in vision, new confusion, new numbness or weakness, and difficulty speaking. Any other symptom shows as Watch.', sourceIds: ['rcp-news2-guidance', 'aha-bp-readings'] },
+          q5: { text: 'Draft: report symptoms early, in your daily check. Take medicines only as directed by the flight surgeon or the on-board protocol.', sourceIds: ['nasa-3001-medops'] }
         } }
     ],
 
@@ -292,7 +291,7 @@
     },
 
     /* Crew medical officer checklists. Process steps only. The clinical
-       content will be written and signed by the physician in Phase 3. */
+       content is drafted for the physician's review. An answer with no checked source stays empty, and Learn hides it. */
     cmoChecklists: {
       generic: { title: 'General checklist', steps: [
         'Confirm who the crew member is and what Crewcial flagged.',

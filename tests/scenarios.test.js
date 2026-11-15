@@ -192,10 +192,14 @@ test('data: symptoms point at real regions, and red-flag and pattern rules point
   Rules.rules.filter(r => r.tier1WithSymptoms).forEach(r => r.tier1WithSymptoms.forEach(id => assert.ok(symptoms.has(id), r.id + ' ' + id)));
   C.regions.forEach(r => r.items.forEach(id => assert.ok(C.indicators.some(i => i.id === id), r.id + ' item ' + id)));
 });
-test('data: every rule can be described in words, and every indicator answers the five questions', () => {
+test('data: every rule can be described in words; every indicator answers all five questions, with no stand-in answers (0.6.2)', () => {
   const ix = E.indexRules(Rules);
   ix.all.forEach(r => assert.ok(E.describeRule(r, ix).length > 10, r.id));
-  C.indicators.forEach(i => ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(q => assert.ok(i.learn[q] && i.learn[q].text.length > 5, i.id + ' ' + q)));
+  C.indicators.forEach(i => {
+    ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(q => assert.ok(i.learn[q] && typeof i.learn[q].text === 'string', i.id + ' ' + q));
+    ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(q => assert.ok(i.learn[q].text.length > 5, i.id + ' ' + q + ' answered'));
+    ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(q => assert.ok(!/to be written|phase 3|placeholder/i.test(i.learn[q].text), i.id + ' ' + q + ' stand-in'));
+  });
 });
 test('data: the release gate is open: every rule is sourced and signed (0.5.0)', () => {
   const rc = E.releaseCheck(Rules);
