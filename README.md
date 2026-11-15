@@ -44,12 +44,12 @@ more, is. Crewcial is built for that moment.
 Built by Team Crewcial for the NASA Space Apps Challenge 2026, challenge
 "Create Health Monitoring Software for Astronauts on Space Missions".
 
-> **Status: prototype (version 0.7.0, 15 November 2026).**
+> **Status: prototype (version 0.8.0, 15 November 2026).**
 > Crewcial is a hackathon prototype for self-assessment training and research.
 > It is **not a medical device**. It gives advice only and never replaces the
 > crew medical officer or the flight surgeon.
-> **All 47 rules are signed off by the team's physician.** Guidance texts,
-> learn cards and checklists are still drafts under her review.
+> **All 47 rules are signed off by the team's physician.** She also read and
+> signed the guidance texts, learn cards and checklists on 15 November 2026.
 
 ## Try it
 
@@ -112,14 +112,14 @@ fictional crew members. A banner says "Simulated data" on every screen.
 
 ## What is real and what is a placeholder
 
-| Part | State on 14 November 2026 |
+| Part | State on 15 November 2026 |
 |---|---|
 | Screens, navigation, data storage, export and import | Built and tested |
 | Rule engine (plausibility, limits, personal baseline, patterns) | Built and tested |
 | Reaction test and Amsler grid procedures | Built from published descriptions and signed off |
 | Clinical numbers (limits, band widths, schedules, red flags) | Signed off: each is either from a checked source or labelled as the physician's own value |
-| Learn cards | All five questions answered for every indicator, each from a checked source or saying that no checked source covers it. Advice lines are marked "Draft" |
-| Guidance texts and crew medical officer checklists | The steps for the fatigue pattern and the blind spot are reviewed by the physician and say so on screen. All other texts are **Draft**, labelled on screen, until her line-by-line review |
+| Learn cards | All five questions answered for every indicator, each from a checked source or saying that no checked source covers it. Read and signed by the physician |
+| Guidance texts and crew medical officer checklists | Read and signed by the physician on 15 November 2026; the cards say "Steps reviewed by the team's physician". The checklists are process steps only: treatment follows the on-board medical checklist and the flight surgeon |
 | Demo crew and all demo readings | **Fictional and simulated** by `js/demo.js` |
 | Sending a report | **Simulated.** Nothing leaves the device |
 | Camera input, usability study results | Not built / not done yet |
@@ -178,6 +178,29 @@ come from our own generator, so the numbers say nothing about clinical
 accuracy. The rule settings were not tuned to reach the targets. The simulated
 crews in this run have no alertness ratings, so it does not exercise the
 blind-spot pattern; the unit and scenario tests do.
+
+## Changes in 0.8.0 (15 November 2026)
+
+- The team's physician read and signed every guidance text, learn-card answer
+  and checklist on 15 November. The cards now say "Steps reviewed by the
+  team's physician", and no text carries a Draft label.
+- New, signed by the physician on 15 November: the possible infection pattern
+  (P2) is urgent, not an emergency. The card stays Watch, the report is pre-set
+  to Urgent, the steps add "Hold safety-critical tasks, such as a spacewalk,
+  until the flight surgeon clears you", and "Who to tell" says to tell the crew
+  medical officer today. With a red-flag symptom it is still Act now. The rule
+  is now version 2; the count stays 47.
+- Rules and sources screen: each rule's note and its references open with one
+  tap, and the full source list is folded until opened.
+- Sources (45 in all): the nap, caffeine and rescheduling advice now cites
+  NASA's evidence report on sleep loss, circadian desynchronization and work
+  overload. The blood-pressure device standard now cites the published
+  AAMI/ESH/ISO statement (Stergiou 2018), the measurement advice cites the
+  American Heart Association's home-monitoring page, and two guidelines carry
+  their DOI. One unused source was removed.
+- About: "Who made it" is one line.
+- Tests: the same 89 rule and scenario tests and 222 browser checks pass, with
+  the new urgent route checked inside them.
 
 ## Changes in 0.7.0 (15 November 2026)
 
@@ -411,19 +434,16 @@ Space Apps asks teams to say how AI tools were used.
   app's texts from the values the physician entered. She edited them and made
   the final choices.
 - Clinical rules, thresholds and guidance are chosen and signed off by the
-  team's aerospace-medicine physician. All 47 rules are signed; texts still in
-  review are marked as drafts.
+  team's aerospace-medicine physician. All 47 rules are signed, and she read
+  and signed the texts on 15 November 2026.
 
 ## Who made it
 
-Dr. Sakhaa Almadani, aerospace medicine physician, Team Crewcial. Crewcial is
-its own concept. Her earlier work, an MSc dissertation at King's College London
-(2025), covered physiological monitoring in spacesuits and other spaceflight
-and analogue settings.
+Dr. Sakhaa Almadani, aerospace medicine physician, Team Crewcial.
 
 ## Sources and licences
 
-- **Sources.** `data/sources.js` lists 46 sources, and the app shows them on
+- **Sources.** `data/sources.js` lists 45 sources, and the app shows them on
   the Rules screen and under each learn card. They include NASA Human Research
   Program pages (hazards, risks, ongoing research), NASA-STD-3001 Volume 1,
   NASA's Reaction Self Test, published papers, and pages from the Canadian

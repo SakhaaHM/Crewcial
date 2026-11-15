@@ -156,7 +156,7 @@
       out.reports.push({ id: id('p'), crewId: 'c4', day: 60, ts: iso(startTs, 60, 9), route: 'pmc', environment: 'mars', oneWayDelayMin: 20, approved: true, status: 'sent', source: 'demo',
         sbar: { S: 'Sadeem (Mission specialist), mission day 60. Location: Mars transit or surface. 2 items flagged: Vision change pattern (Watch); Amsler grid (Watch).',
                 B: 'Amsler grid: Right eye: 3 newly marked squares on mission day 60, compared with day 30. Left eye: no new distortion on mission day 60.',
-                A: 'Rule-based summary from Crewcial. This is not a diagnosis. Patterns: Vision change pattern. Rules applied: P3, AM-NEW. Some of these rules are placeholders and are not clinically validated.',
+                A: 'Rule-based summary from Crewcial. This is not a diagnosis. Patterns: Vision change pattern. Rules applied: P3, AM-NEW.',
                 R: 'Requesting review at the next private medical conference. Self-care started: yes.' } });
     }
     return out;

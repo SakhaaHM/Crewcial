@@ -274,18 +274,20 @@ async function noSideScroll(page, label) {
   /* ---- Rules, learn, setup ---- */
   await goto(page, 'rules');
   check('rules screen says every rule is sourced and signed off (0.5.0)', /All 47 rules are sourced and signed off/.test(await text(page, '.annun') || ''));
-  check('all 47 rules and 46 sources are listed', (await page.locator('.rules .rule').count()) === 47 && (await page.locator('.sources li').count()) === 46);
+  check('all 47 rules and 45 sources are listed, the source list behind one tap', (await page.locator('.rules .rule').count()) === 47 && (await page.locator('details.srcall:not([open]) .sources li').count()) === 45);
   check('the switched-off pattern P4 is listed separately', (await page.locator('.rules--off .rule-off').count()) === 1);
   const sourcedRules = await page.evaluate(() => window.Crewcial.Rules.rules.filter(r => r.sourceIds && r.sourceIds.length).length);
-  check('the Rules screen writes every source out in full', sourcedRules > 0 && (await page.locator('.rules p.src').count()) >= sourcedRules && (await page.locator('.rules details.srcs').count()) === 0, sourcedRules + ' sourced rules');
+  check('on the Rules screen each rule keeps its note and sources behind one tap, with every source written out inside', sourcedRules > 0 && (await page.locator('.rules details.rule-more p.src').count()) >= sourcedRules && (await page.locator('.rules details.rule-more[open]').count()) === 0 &&
+    (await page.locator('.rules li > p.note, .rules li > p.src').count()) === 0 && (await page.locator('.rules details.srcs').count()) === 0, sourcedRules + ' sourced rules');
   await goto(page, 'learn-bp');
   check('learn answers the five questions, one fold-out each', (await page.locator('main details.card.qa').count()) === 5);
-  { /* 0.6.1: no Learn page says "to be written", "Phase 3" or "placeholder" */
+  { /* 0.6.1: no Learn page says "to be written", "Phase 3" or "placeholder"; 0.8.0: nor "Draft" once the texts are signed */
+    const signedTexts = await page.evaluate(() => !!window.Crewcial.Content.textsSigned);
     const stale = [];
     for (const id of ['bp', 'hr', 'temp', 'sleep', 'mood', 'glucose', 'spo2', 'rt', 'amsler', 'symptoms']) {
       await goto(page, 'learn-' + id);
       const t = await page.evaluate(() => { document.querySelectorAll('main details').forEach(d => { d.open = true; }); return document.querySelector('main').textContent; });
-      if (/to be written|phase 3|placeholder/i.test(t)) { stale.push(id); }
+      if (/to be written|phase 3|placeholder/i.test(t) || (signedTexts && /\bdraft\b|awaiting the physician/i.test(t))) { stale.push(id); }
     }
     check('no Learn page shows stand-in wording', stale.length === 0, stale.join(', '));
     check('every indicator answers all five Learn questions, none left empty (0.6.2)', await page.evaluate(() => window.Crewcial.Content.indicators.every(function (i) { return ['q1', 'q2', 'q3', 'q4', 'q5'].every(function (q) { return i.learn[q] && i.learn[q].text.length > 5; }); })));
@@ -313,7 +315,7 @@ async function noSideScroll(page, label) {
   check('export produces valid data', !!parsed && parsed.schema === 1 && parsed.crew.length === 4);
 
   /* ---- 0.4.0: prompts, scale note, personal limits, new mission phase ---- */
-  /* ---- 0.5.0: urgent limits for temperature and blood sugar (decisions 3.2 and 3.3) ---- */
+  /* ---- 0.5.0: urgent limits for temperature and blood sugar ---- */
   await goto(page, 'checkin');
   await page.fill('#in-bp_sys', '117'); await page.fill('#in-bp_dia', '75');
   await page.fill('#in-temp', '39.4');
@@ -326,7 +328,11 @@ async function noSideScroll(page, label) {
   const urgHash = await page.evaluate(() => location.hash + ' ' + (document.querySelector('.error, .form-error, [role="alert"]') || {}).textContent);
   check('39.4 °C shows Watch at the urgent limit, not Act now', (await page.locator('#card-temp.card--watch').count()) === 1 && /urgent limit of 39\.1/.test(tempCard) && /Urgent, not an emergency/.test(tempCard), urgHash + ' | ' + tempCard.slice(0, 200));
   check('a blood sugar of 52 says treat now and is urgent, not an emergency', /15 g of fast-acting sugar/.test(gluCard) && /Urgent, not an emergency/.test(gluCard), gluCard.slice(0, 200));
-  check('steps the physician has not reviewed yet keep the Draft label', (await page.locator('#card-glucose .draft').count()) === 1 && (await page.locator('#card-glucose .reviewed').count()) === 0);
+  { /* 0.8.0: the Draft label shows only while the instruction texts are unsigned */
+    const signedTexts = await page.evaluate(() => !!window.Crewcial.Content.textsSigned);
+    const d = await page.locator('#card-glucose .draft').count(), r = await page.locator('#card-glucose .reviewed').count();
+    check(signedTexts ? 'signed texts carry no Draft label, and the card says its steps were reviewed' : 'steps the physician has not reviewed yet keep the Draft label', signedTexts ? (d === 0 && r === 1 && (await page.locator('main .draft').count()) === 0) : (d === 1 && r === 0));
+  }
   await page.screenshot({ path: path.join(SHOTS, '17-urgent-phone.png'), fullPage: true });
   await goto(page, 'report');
   check('the report for an urgent limit is set to Urgent', await page.isChecked('input[name="rp-route"][value="urgent"]'));

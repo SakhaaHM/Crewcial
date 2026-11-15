@@ -124,7 +124,7 @@ scenario('S18 a new Amsler distortion goes to the flight surgeon as an urgent re
   return { eyes: res.regions.eyes.state, route: E.suggestRoute(2, false, res.flagged, ctx.ix) };
 });
 
-scenario('S19 a temperature of 39.4 °C on its own is urgent, not an emergency (decision 3.3)', { temp: 'watch', urgent: true, act: false, route: 'urgent' }, () => {
+scenario('S19 a temperature of 39.4 °C on its own is urgent, not an emergency', { temp: 'watch', urgent: true, act: false, route: 'urgent' }, () => {
   const readings = F.setToday(F.steadyDays('a', 20), 'a', 20, 'temp', 39.4);
   const { res, ctx } = run({ readings, tests: okTests, symptoms: F.noSymptoms('a', [20]) });
   const t = res.indicators.temp;
@@ -135,7 +135,7 @@ scenario('S20 the same temperature with new confusion is Act now', { overall: 'a
   const { res } = run({ readings, tests: okTests, symptoms: [F.symptom('a', 20, 'confusion', 'brain')] });
   return { overall: res.overall, temp: res.indicators.temp.state };
 });
-scenario('S21 the blood-sugar ladder, checked when something prompts it (decision 3.2)', {
+scenario('S21 the blood-sugar ladder, checked when something prompts it', {
   52: 'watch urgent', 62: 'watch', 100: 'ok', 168: 'check', 210: 'watch urgent'
 }, () => {
   const out = {};
@@ -256,7 +256,7 @@ test('demo: no simulated reading trips an entry-range rule or a Tier 1 limit by 
 test('demo story: the flight engineer shows the fatigue pattern and the blind spot the day before a spacewalk', () => {
   const { res, ctx, crew } = demoEval('c3');
   assert.equal(res.overall, 'watch');
-  assert.deepEqual(res.patterns.map(p => p.id), ['P5', 'P1']);   /* decision 2.2: the blind spot leads */
+  assert.deepEqual(res.patterns.map(p => p.id), ['P5', 'P1']);   /* the blind spot leads */
   assert.equal(res.indicators.rt.feel.state, 'blindspot');
   assert.equal(res.indicators.rt.feel.rating, 8);
   assert.equal(res.indicators.sleep.state, 'watch');
@@ -286,6 +286,12 @@ test('demo story: the commander has not done today\'s check, so nothing is green
 test('demo story: the crew medical officer is in range today and had the infection pattern on days 40 to 43', () => {
   assert.equal(demoEval('c2').res.overall, 'ok');
   [40, 41, 42, 43].forEach(d => assert.ok(demoEval('c2', d).res.patterns.some(p => p.id === 'P2'), 'day ' + d));
+  /* 0.8.0, signed 15 Nov 2026: the infection pattern is urgent, not an emergency, and its report goes as Urgent */
+  [40, 41, 42, 43].forEach(d => {
+    const ev = demoEval('c2', d), p = ev.res.patterns.find(x => x.id === 'P2');
+    assert.ok(p.state === 'watch' && p.urgent === true, 'urgent Watch on day ' + d);
+    assert.equal(E.suggestRoute(2, false, ev.res.flagged, ev.ctx.ix), 'urgent', 'report route on day ' + d);
+  });
   [39, 44].forEach(d => assert.equal(demoEval('c2', d).res.patterns.length, 0, 'day ' + d));
 });
 test('demo story: the mission specialist has a vision change from the day-60 eye check', () => {

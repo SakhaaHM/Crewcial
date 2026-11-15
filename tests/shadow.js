@@ -70,7 +70,7 @@ if (require.main === module) {
   const pct = x => (100 * x).toFixed(1) + '%';
   console.log('Crewcial shadow-mode simulation (SYNTHETIC data; rules version ' + r.rulesVersion + '; ' + r.placeholderRules + ' placeholder rules)');
   console.log('Simulated: ' + r.crew + ' crew x ' + r.days + ' days, evaluated from day ' + r.firstDay + ' = ' + r.crewDays + ' crew-days');
-  console.log('Injected events: ' + r.events + ' | flagged: ' + r.detected + ' | detection rate: ' + pct(r.detectionRate) + ' (team target, proposed in the dissertation: at least 90%)');
+  console.log('Injected events: ' + r.events + ' | flagged: ' + r.detected + ' | detection rate: ' + pct(r.detectionRate) + ' (team target: at least 90%)');
   Object.keys(r.byType).forEach(k => console.log('  ' + k + ': ' + r.byType[k].detected + ' of ' + r.byType[k].events));
   console.log('Mean days from event start to first flag: ' + (r.meanDelayDays === null ? 'n/a' : r.meanDelayDays.toFixed(2)));
   console.log('Crew-days with an Act-now or Watch flag: ' + r.alertDays + ' | outside any event: ' + r.falseAlertDays + ' | false-alert share: ' + pct(r.falseAlertShare) + ' (team target: under 5% of alerts)');

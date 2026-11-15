@@ -1,8 +1,7 @@
 /*! Crewcial - app shell and screens.
  * AI-assistance disclosure: this file was generated with Claude (Anthropic) for
  * Team Crewcial, NASA Space Apps Challenge 2026. Clinical rules and guidance are
- * data (data/rules.js, data/content.js) and stay placeholders or drafts until the
- * team's physician signs them off.
+ * data (data/rules.js, data/content.js), signed off by the team's physician.
  * Not a medical device. Advisory prototype only.
  */
 (function () {
@@ -11,7 +10,7 @@
   var E = CW.Engine, C = CW.Content, RULES = CW.Rules, SOURCES = CW.Sources, Demo = CW.Demo, Store = CW.Storage, Charts = CW.Charts, Figure = CW.Figure;
   var ix = E.indexRules(RULES);
   var RELEASE = E.releaseCheck(RULES);
-  var APP_VERSION = '0.7.0';
+  var APP_VERSION = '0.8.0';
   var DAY_MS = 86400000;
   var srcById = {}, indById = {}, regionById = {}, symById = {};
   SOURCES.forEach(function (s) { srcById[s.id] = s; });
@@ -77,6 +76,15 @@
     if (open) { return '<p class="src">Source' + (list.length > 1 ? 's' : '') + ': ' + items.join('; ') + '</p>'; }
     return '<details class="srcs"><summary>' + (list.length > 1 ? list.length + ' sources' : '1 source') + '</summary><ul>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></details>';
   }
+  /* Rules screen: a rule's grey note and its references open with one tap. */
+  function ruleMore(r) {
+    var n = (r.sourceIds || []).filter(function (id) { return srcById[id]; }).length;
+    if (!r.note && !n) { return ''; }
+    var label = (r.note ? 'Note' : '') + (r.note && n ? ' and ' : '') + (n ? (n > 1 ? n + ' sources' : '1 source') : '');
+    return '<details class="rule-more"><summary>' + label + '</summary>' + (r.note ? '<p class="note">' + esc(r.note) + '</p>' : '') + sourceList(r.sourceIds, true) + '</details>';
+  }
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function niceDate(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? Number(m[3]) + ' ' + MONTHS[Number(m[2]) - 1] + ' ' + m[1] : (iso || ''); }
   function ruleBadge(r) {
     if (r.disabled) { return '<span class="badge badge--pending">Switched off</span>'; }
     if (r.status === 'placeholder') { return '<span class="badge badge--placeholder">Placeholder</span>'; }
@@ -84,9 +92,12 @@
     return '<span class="badge badge--pending">' + (r.status === 'proposed' ? 'Team-proposed' : 'Sourced') + ', awaiting sign-off</span>';
   }
   function steps(list) { return '<ol class="steps">' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>'; }
-  var DRAFT = '<p class="draft">Draft guidance, not yet reviewed by the team\'s physician.</p>';
-  /* 0.7.0: a guidance set marked reviewed: true in data/content.js was read and approved by the physician. */
+  /* The instruction texts carry a Draft label only while Content.textsSigned is empty.
+     A guidance set marked reviewed: true was approved on its own by the physician. */
+  var SIGNED = !!C.textsSigned;
+  var DRAFT = SIGNED ? '' : '<p class="draft">Draft guidance, not yet reviewed by the team\'s physician.</p>';
   var REVIEWED = '<p class="reviewed">Steps reviewed by the team\'s physician.</p>';
+  function stepLabel(set) { return (SIGNED || (set && set.reviewed)) ? REVIEWED : DRAFT; }
   /* Minimal cards (0.3.0): the essentials stay in view; everything else sits behind one Details tap. */
   function more(inner, label) { return inner ? '<details class="more"><summary>' + esc(label || 'Details') + '</summary><div class="more-b">' + inner + '</div></details>' : ''; }
   function nextStep(t) { return t ? '<p class="next"><strong>Next:</strong> ' + esc(t) + '</p>' : ''; }
@@ -205,12 +216,13 @@
     var g = C.guidance[st.id] || {}, gen = C.guidance.generic;
     if (st.state === 'act') {
       var t1 = (g.t1 || gen.t1).slice();
-      /* Decision 3.6: re-measure first when a reading, not a symptom, set off the Act-now limit. */
+      /* Re-measure first when a reading, not a symptom, set off the Act-now limit. */
       if (st.id !== 'symptoms' && st.id !== 'rt' && st.id !== 'amsler' && gen.remeasure) { t1 = [gen.remeasure].concat(t1.filter(function (x) { return !/^Repeat the measurement/.test(x); })); }
+      else if (st.id === 'symptoms') { t1 = t1.filter(function (x) { return !/^Repeat the measurement/.test(x); }); }
       return { list: t1, src: g.sourceIds };
     }
     if (st.state === 'watch') {
-      /* Decision 3.2: blood sugar has its own steps for low, low and urgent, and high. */
+      /* Blood sugar has its own steps for low, low and urgent, and high. */
       if (st.id === 'glucose' && g.low) { return { list: st.deviation === 'low' ? (st.urgent ? g.lowUrgent : g.low) : g.highUrgent, src: g.sourceIds }; }
       if (st.urgent && g.urgent) { return { list: g.urgent, src: g.sourceIds }; }
       return { list: g.t2 || gen.t2, src: g.sourceIds };
@@ -280,10 +292,10 @@
       else {
         var a = actionsFor(st);
         if (st.state === 'act') {
-          if (a.list.length) { h += '<div class="do"><h4>What to do now</h4>' + steps(a.list) + '</div>'; extra += DRAFT; }
+          if (a.list.length) { h += '<div class="do"><h4>What to do now</h4>' + steps(a.list) + '</div>'; extra += stepLabel(null); }
           h += tellBlock(1, st.id === 'mood');
         } else {
-          if (a.list.length) { h += nextStep(a.list[0]); extra += '<div class="do"><h4>What to do now</h4>' + steps(a.list) + DRAFT + '</div>'; }
+          if (a.list.length) { h += nextStep(a.list[0]); extra += '<div class="do"><h4>What to do now</h4>' + steps(a.list) + stepLabel(null) + '</div>'; }
           if (st.urgent && st.state === 'watch') { h += '<p class="urgent-tag">Urgent, not an emergency</p>'; extra += '<div class="tell"><h4>Who to tell</h4>' + steps(C.guidance.generic.urgentTell) + '</div>'; }
           else if (st.state !== 'check') { extra += tellBlock(E.STATES[st.state].tier, st.id === 'mood'); }
         }
@@ -313,12 +325,15 @@
     var g = C.guidance[p.id] || {}, list = p.state === 'act' ? C.guidance.generic.t1 : (g.t2 || C.guidance.generic.t2), extra = '';
     /* 0.7.0: urgent, not an emergency (a spacewalk today or tomorrow): the hold step and the urgent "Who to tell". */
     var urgent = !!p.urgent && p.state === 'watch';
-    var label = (p.state !== 'act' && g.t2 && g.reviewed) ? REVIEWED : DRAFT;
-    if (urgent) { list = list.concat([C.guidance.generic.urgentHold]); }
+    var label = stepLabel(p.state !== 'act' && g.t2 ? g : null);
+    if (urgent) { /* the urgent "Who to tell" lines are shown once, in their own block */
+      var ut = C.guidance.generic.urgentTell;
+      list = list.filter(function (x) { return ut.indexOf(x) === -1; }).concat([C.guidance.generic.urgentHold]);
+    }
     var h = '<article class="card card--' + p.state + ' card--pattern" id="card-' + p.id + '">';
     h += '<header class="card-h">' + tile(p.state) + '<h3>' + esc(p.title) + '</h3></header>';
     h += '<ul class="support">' + p.supporting.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>';
-    if (p.state === 'act') { h += '<div class="do"><h4>What to do now</h4>' + steps(list) + '</div>' + tellBlock(p.tier, false); extra += DRAFT; }
+    if (p.state === 'act') { h += '<div class="do"><h4>What to do now</h4>' + steps(list) + '</div>' + tellBlock(p.tier, false); extra += stepLabel(null); }
     else {
       h += nextStep(list[0]);
       if (urgent) { h += '<p class="urgent-tag">Urgent, not an emergency</p>'; }
@@ -691,7 +706,7 @@
     h += '<div class="chips" role="group" aria-label="Choose a checklist">' + Object.keys(C.cmoChecklists).map(function (k) {
       return '<a class="chipbtn" href="#cmo-' + k + '"' + (k === id ? ' aria-current="true"' : '') + '>' + esc(C.cmoChecklists[k].title) + '</a>';
     }).join('') + '</div>';
-    h += '<section class="card"><h2>' + esc(cl.title) + '</h2><p class="ph"><span class="badge badge--placeholder">Draft</span> Process steps only; clinical steps await the physician.</p><ul class="todo">' + cl.steps.map(function (s, i) {
+    h += '<section class="card"><h2>' + esc(cl.title) + '</h2>' + (SIGNED ? '<p class="note">' + esc(C.cmoNote) + '</p>' : '<p class="ph"><span class="badge badge--placeholder">Draft</span> Process steps only; clinical steps await the physician.</p>') + '<ul class="todo">' + cl.steps.map(function (s, i) {
       var key = id + ':' + i;
       return '<li><label class="tick"><input type="checkbox" data-cmo="' + key + '"' + (ui.cmoDone[key] ? ' checked' : '') + '><span>' + esc(s) + '</span></label></li>';
     }).join('') + '</ul><p class="note">' + esc(C.app.medication) + '</p></section>';
@@ -708,11 +723,11 @@
       }).join('') + '</ul><section class="card"><h2>The five hazards of human spaceflight</h2><ul class="support">' + C.hazards.map(function (z) { return '<li>' + esc(z.name) + '</li>'; }).join('') + '</ul>' + sourceList(['nasa-hrp-hazards']) + '</section>';
     }
     var h = '<p class="crumb"><a href="#learn">Learn</a></p><h1>' + esc(def.label) + '</h1><p class="lede">' + esc(def.howTo) + '</p>';
-    h += '<p class="ph"><span class="badge badge--placeholder">Draft</span> Awaiting the physician\'s review.</p>';
+    if (!SIGNED) { h += '<p class="ph"><span class="badge badge--placeholder">Draft</span> Awaiting the physician\'s review.</p>'; }
     ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(function (q) {
       var a = def.learn[q];
       if (!a || !a.text) { return; } /* 0.6.1: no checked source yet, so the question is hidden */
-      h += '<details class="card qa"><summary>' + esc(C.learnQuestions[q]) + '</summary><p>' + esc(a.text) + '</p>' + sourceList(a.sourceIds) + '</details>';
+      h += '<details class="card qa"><summary>' + esc(C.learnQuestions[q]) + '</summary><p>' + esc((q === 'q5' && !SIGNED ? 'Draft: ' : '') + a.text) + '</p>' + sourceList(a.sourceIds) + '</details>';
     });
     return h;
   };
@@ -725,24 +740,24 @@
     var h = '<h1>Rules and sources</h1><p class="lede">Every colour in Crewcial comes from a rule listed here.</p>';
     h += '<section class="annun annun--' + (RELEASE.ready ? 'ok' : 'nodata') + '"><div class="annun-state">' + tile(RELEASE.ready ? 'ok' : 'nodata', RELEASE.ready ? 'Ready' : 'Not ready for release') + '</div>' +
       (RELEASE.ready
-        ? '<p class="annun-title">All ' + RELEASE.total + ' rules are sourced and signed off</p><p class="annun-sub">Signed by the team\'s physician. Rules version ' + esc(RULES.version) + ', ' + esc(RULES.updated) + '.</p></section>'
-        : '<p class="annun-title">' + RELEASE.placeholders.length + ' of ' + RELEASE.total + ' rules are placeholders</p><p class="annun-sub">' + RELEASE.unsigned.length + ' more are sourced and await sign-off. Rules version ' + esc(RULES.version) + ', ' + esc(RULES.updated) + '.</p></section>');
+        ? '<p class="annun-title">All ' + RELEASE.total + ' rules are sourced and signed off</p><p class="annun-sub">Signed by the team\'s physician. Rules version ' + esc(RULES.version) + ', ' + esc(niceDate(RULES.updated)) + '.</p></section>'
+        : '<p class="annun-title">' + RELEASE.placeholders.length + ' of ' + RELEASE.total + ' rules are placeholders</p><p class="annun-sub">' + RELEASE.unsigned.length + ' more are sourced and await sign-off. Rules version ' + esc(RULES.version) + ', ' + esc(niceDate(RULES.updated)) + '.</p></section>');
     groups.forEach(function (g) {
       var rs = ix.all.filter(function (r) { return r.type === g[0]; });
       if (!rs.length) { return; }
       h += '<h2>' + g[1] + '</h2><ul class="rules">' + rs.map(function (r) {
         return '<li class="rule" id="rule-' + esc(r.id) + '"><p class="rule-h"><code>' + esc(r.id) + '</code> ' + ruleBadge(r) + (r.title ? ' <strong>' + esc(r.title) + '</strong>' : (r.target && r.target !== 'pattern' ? ' <span class="ver">' + esc(r.symptomId ? (symById[r.symptomId] || {}).label : r.target.replace('_', ' ')) + '</span>' : '')) + '</p>' +
-          '<p>' + esc(E.describeRule(r, ix)) + '</p>' + (r.note ? '<p class="note">' + esc(r.note) + '</p>' : '') + sourceList(r.sourceIds, true) + '</li>';
+          '<p>' + esc(E.describeRule(r, ix)) + '</p>' + ruleMore(r) + '</li>';
       }).join('') + '</ul>';
     });
     if (ix.disabled && ix.disabled.length) {
       h += '<h2>Switched off</h2><ul class="rules rules--off">' + ix.disabled.map(function (r) {
-        return '<li class="rule-off" id="rule-' + esc(r.id) + '"><p class="rule-h"><code>' + esc(r.id) + '</code> ' + ruleBadge(r) + (r.title ? ' <strong>' + esc(r.title) + '</strong>' : '') + '</p>' + (r.note ? '<p class="note">' + esc(r.note) + '</p>' : '') + '</li>';
+        return '<li class="rule-off" id="rule-' + esc(r.id) + '"><p class="rule-h"><code>' + esc(r.id) + '</code> ' + ruleBadge(r) + (r.title ? ' <strong>' + esc(r.title) + '</strong>' : '') + '</p>' + ruleMore(r) + '</li>';
       }).join('') + '</ul>';
     }
-    h += '<h2>Sources</h2><ol class="sources">' + SOURCES.map(function (s) {
-      return '<li id="src-' + esc(s.id) + '"><span class="kind">' + esc(s.kind) + '</span> ' + esc(s.citation) + (s.url ? ' <a href="' + esc(s.url) + '">Open the source</a>' : '') + ' <span class="note">Checked ' + esc(s.accessed) + '.</span></li>';
-    }).join('') + '</ol>';
+    h += '<h2>Sources</h2><details class="card srcall"><summary>All ' + SOURCES.length + ' sources</summary><ol class="sources">' + SOURCES.map(function (s) {
+      return '<li id="src-' + esc(s.id) + '"><span class="kind">' + esc(s.kind) + '</span> ' + esc(s.citation) + (s.url ? ' <a href="' + esc(s.url) + '">Open the source</a>' : '') + (s.url ? ' <span class="note">Accessed ' + esc(niceDate(s.accessed)) + '.</span>' : '') + '</li>';
+    }).join('') + '</ol></details>';
     return h;
   };
 
@@ -804,9 +819,9 @@
         return '<li><strong>' + esc(x[0]) + ':</strong> ' + esc(x[1].replace('{n}', nTxt)) + '</li>';
       }).join('') + '</ul></section>' : '') +
       '<section class="card"><h2>What it is for</h2><p>' + esc(a.intendedUse) + '</p></section>' +
-      '<section class="card"><h2>Who made it</h2><p>' + esc(a.team) + ', for the ' + esc(a.challenge) + '.</p><p>' + esc(a.lineage) + '</p><p class="note">Crewcial is a challenge entry. It is not affiliated with or endorsed by NASA or any space agency.</p></section>' +
+      '<section class="card"><h2>Who made it</h2><p>' + esc(a.team) + ', for the ' + esc(a.challenge) + '.</p><p class="note">Crewcial is a challenge entry. It is not affiliated with or endorsed by NASA or any space agency.</p></section>' +
       '<section class="card"><h2>How AI was used</h2><ul class="support">' + a.siDisclosure.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section>' +
-      '<section class="card"><h2>Version</h2><p>App ' + esc(APP_VERSION) + '. Rules ' + esc(RULES.version) + ' of ' + esc(RULES.updated) + '. ' + SOURCES.length + ' sources.</p><p class="links"><a href="#rules">Rules and sources</a></p></section>';
+      '<section class="card"><h2>Version</h2><p>App ' + esc(APP_VERSION) + '. Rules ' + esc(RULES.version) + ' of ' + esc(niceDate(RULES.updated)) + '. ' + SOURCES.length + ' sources.</p><p class="links"><a href="#rules">Rules and sources</a></p></section>';
   };
   screens.more = function () {
     return '<h1>More</h1><ul class="menu">' + NAV_ALL.filter(function (n) { return ['home', 'checkin', 'trends', 'reports'].indexOf(n[0]) === -1; }).map(function (n) {
