@@ -251,8 +251,13 @@ test('P2 possible infection: temperature and heart rate both above the band; Act
   let res = evaluate({ readings, tests: okTests, symptoms: F.noSymptoms('a', [20]) });
   assert.deepEqual(res.patterns.map(p => p.id + ':' + p.tier), ['P2:2']);
   assert.equal(res.regions.immune.state, 'watch');
+  /* 0.8.0, signed 15 Nov 2026: the pattern is urgent, not an emergency (Watch, report set to Urgent) */
+  assert.equal(res.patterns[0].state, 'watch');
+  assert.equal(res.patterns[0].urgent, true);
+  assert.equal(res.patterns[0].urgentWhy, 'rule');
   res = evaluate({ readings, tests: okTests, symptoms: [F.symptom('a', 20, 'chest_pain', 'heart')] });
   assert.deepEqual(res.patterns.map(p => p.id + ':' + p.tier), ['P2:1']);
+  assert.ok(!res.patterns[0].urgent, 'with a red flag it is Act now, not the urgent route');
   const onlyTemp = F.setToday(F.steadyDays('a', 20), 'a', 20, 'temp', 38.1);
   assert.deepEqual(evaluate({ readings: onlyTemp, tests: okTests, symptoms: F.noSymptoms('a', [20]) }).patterns, []);
 });

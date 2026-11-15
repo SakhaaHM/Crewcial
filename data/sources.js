@@ -1,8 +1,8 @@
 /*! Crewcial - sources registry.
  * AI-assistance disclosure: this file was generated with Claude (Anthropic) for
- * Team Crewcial, NASA Space Apps Challenge 2026. Each entry was opened and checked
- * on its "accessed" date. A source listed here supports a statement; it does not
- * make a rule clinically validated. Rule status lives in data/rules.js.
+ * Team Crewcial, NASA Space Apps Challenge 2026. Each entry was looked up and
+ * checked on its "accessed" date. A source listed here supports a statement; it
+ * does not make a rule clinically validated. Rule status lives in data/rules.js.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) { module.exports = factory(); }
@@ -10,6 +10,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
   var A = '2026-11-14';
+  var B = '2026-11-15';
   return [
     { id: 'nasa-hrp-hazards', kind: 'NASA',
       citation: 'NASA Human Research Program. 5 Hazards of Human Spaceflight.',
@@ -92,9 +93,6 @@
     { id: 'nasa-crewtime', kind: 'NASA',
       citation: 'Dulin N, Easter B, Stratton E. Crew Time Analysis of Planned Medical Activities & Estimate of Time Required for 6 Month Increment. Lists private medical and private psychological conferences. NASA NTRS 20230015627.',
       url: 'https://ntrs.nasa.gov/api/citations/20230015627/downloads/Med%20Crew%20Time%20Analysis.pdf', accessed: A },
-    { id: 'nasa-tlx', kind: 'NASA',
-      citation: 'Hart SG. NASA Task Load Index (TLX): Computerized Version, Volume 1.0. NASA Ames Research Center. NASA NTRS 20000021487.',
-      url: 'https://ntrs.nasa.gov/citations/20000021487', accessed: A },
     { id: 'csa-c2m2-2025', kind: 'Space agency partner',
       citation: 'Mani C, Pearce C, Jassal G, Prysyazhnyuk A, Martin A, Gedamu E, Richmond T, Coulombe J, Mielczarek C (Canadian Space Agency). Enabling Earth-Independent Medical Operations: the CSA Connected Care Medical Module Framework. 18th International Conference on Space Operations (SpaceOps 2025), Montreal, 26-30 May 2025, paper 92. Describes ISS communication with the ground as near-instantaneous.',
       url: 'https://publications.spaceops.org/2025/download_by_id.php?id=0092', accessed: A },
@@ -114,8 +112,8 @@
       citation: 'American Heart Association. Understanding Blood Pressure Readings.',
       url: 'https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings', accessed: A },
     { id: 'aha-bp-measure', kind: 'Reference text',
-      citation: 'American Heart Association / Go Red for Women. Blood pressure measurement instructions (2020), copy hosted by the University of Richmond.',
-      url: 'https://employeewellbeing.richmond.edu/common/blood-pressure-measurement-instructions.pdf', accessed: A },
+      citation: 'American Heart Association. Monitoring Your Blood Pressure at Home. No smoking, caffeine or exercise within 30 minutes before a measurement, and at least five minutes of quiet rest.',
+      url: 'https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings/monitoring-your-blood-pressure-at-home', accessed: B },
     { id: 'ada-2026-s6', kind: 'Peer-reviewed paper',
       citation: 'ADA Professional Practice Committee. 6. Glycemic Goals, Hypoglycemia, and Hyperglycemic Crises: Standards of Care in Diabetes-2026. Diabetes Care 2026;49(Suppl 1):S132-S149.',
       url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12690178', accessed: A },
@@ -126,14 +124,14 @@
       citation: 'ADA Professional Practice Committee. 16. Diabetes Care in the Hospital: Standards of Care in Diabetes-2025. Diabetes Care 2025;48(Suppl 1):S321-S334.',
       url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11635037', accessed: A },
     { id: 'hgc-2024', kind: 'Peer-reviewed paper',
-      citation: 'Umpierrez GE, Davis GM, ElSayed NA, et al. Hyperglycemic Crises in Adults With Diabetes: A Consensus Report. Diabetes Care 2024;47(8):1257-1275. Criteria checked in an American College of Physicians summary; the full text was not opened.',
-      url: 'https://diabetesguide.acponline.org/archives/2024/07/12/1.htm', accessed: A },
+      citation: 'Umpierrez GE, Davis GM, ElSayed NA, et al. Hyperglycemic Crises in Adults With Diabetes: A Consensus Report. Diabetes Care 2024;47(8):1257-1275. doi:10.2337/dci24-0032.',
+      url: 'https://doi.org/10.2337/dci24-0032', accessed: B },
     { id: 'shah-2019', kind: 'Peer-reviewed paper',
-      citation: 'Shah VN, DuBose SN, Li Z, et al. Continuous Glucose Monitoring Profiles in Healthy Nondiabetic Participants: A Multicenter Prospective Study. J Clin Endocrinol Metab 2019;104(10):4356-4364. Abstract read.',
+      citation: 'Shah VN, DuBose SN, Li Z, et al. Continuous Glucose Monitoring Profiles in Healthy Nondiabetic Participants: A Multicenter Prospective Study. J Clin Endocrinol Metab 2019;104(10):4356-4364.',
       url: 'https://doi.org/10.1210/jc.2018-02763', accessed: A },
     { id: 'bts-2017', kind: 'Peer-reviewed paper',
-      citation: 'O\'Driscoll BR, Howard LS, Earis J, Mak V. BTS guideline for oxygen use in adults in healthcare and emergency settings. Thorax 2017;72(Suppl 1):ii1-ii90. Normal range checked in an ERS Breathe summary.',
-      url: 'https://publications.ersnet.org/content/breathe/9/4/246', accessed: A },
+      citation: 'O\'Driscoll BR, Howard LS, Earis J, Mak V. BTS guideline for oxygen use in adults in healthcare and emergency settings. Thorax 2017;72(Suppl 1):ii1-ii90. doi:10.1136/thoraxjnl-2016-209729.',
+      url: 'https://doi.org/10.1136/thoraxjnl-2016-209729', accessed: B },
     { id: 'drezner-2017', kind: 'Peer-reviewed paper',
       citation: 'Drezner JA, Sharma S, Baggish A, et al. International criteria for electrocardiographic interpretation in athletes: consensus statement. Br J Sports Med 2017;51:704-731.',
       url: 'https://bjsm.bmj.com/content/51/9/704', accessed: A },
@@ -143,11 +141,11 @@
     { id: 'leys-2013', kind: 'Peer-reviewed paper',
       citation: 'Leys C, Ley C, Klein O, Bernard P, Licata L. Detecting outliers: Do not use standard deviation around the mean, use absolute deviation around the median. J Exp Soc Psychol 2013;49:764-766.',
       url: 'https://doi.org/10.1016/j.jesp.2013.03.013', accessed: A },
-    { id: 'iso-81060-2', kind: 'Reference text',
-      citation: 'ISO 81060-2:2018, the AAMI/ESH/ISO universal standard for validating blood pressure devices. Criterion 1 checked in a published table of validation protocols; the standard itself was not opened.',
-      url: 'https://clinicalhypertension.biomedcentral.com/articles/10.1186/s40885-024-00268-7/tables/1', accessed: A },
-    { id: 'almadani-2025', kind: 'Team',
-      citation: 'Almadani S. Physiological Monitoring Across Spaceflight and Analogue Environments: A Narrative Review and the ARGUS System Proposal. MSc dissertation, King\'s College London, 2025. (Team member\'s own work.)',
-      url: '', accessed: A }
+    { id: 'iso-81060-2', kind: 'Peer-reviewed paper',
+      citation: 'Stergiou GS, Alpert B, Mieke S, et al. A Universal Standard for the Validation of Blood Pressure Measuring Devices: AAMI/ESH/ISO Collaboration Statement. Hypertension 2018;71(3):368-374. The basis of ISO 81060-2:2018.',
+      url: 'https://doi.org/10.1161/HYPERTENSIONAHA.117.10237', accessed: B },
+    { id: 'nasa-hrp-sleep-2016', kind: 'NASA',
+      citation: 'Flynn-Evans E, Gregory K, Arsintescu L, Whitmire A. Evidence Report: Risk of Performance Decrements and Adverse Health Outcomes Resulting from Sleep Loss, Circadian Desynchronization, and Work Overload. NASA Human Research Program, 2016. Lists naps and caffeine among the fatigue countermeasures crews use, and schedule changes made by flight surgeons; how well naps work in flight is not yet known.',
+      url: 'https://ntrs.nasa.gov/citations/20160003864', accessed: B }
   ];
 });

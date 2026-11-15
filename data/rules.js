@@ -4,15 +4,16 @@
  *
  * READ THIS FIRST
  * Every rule has a status that says where its numbers come from:
- *   "published"   - from a source that was opened and checked (see sourceIds).
- *   "proposed"    - proposed by the team's physician herself (labelled as such).
- *   "placeholder" - an engineering stand-in so the software can run. NOT clinically
- *                   reviewed. The app shows a placeholder badge wherever such a rule
- *                   is used.
- * Every rule also has "signed": true only after the team's physician has reviewed
- * and approved it. A rule with no "signed" field counts as not signed.
- * tests/release-check.js fails while any rule is a placeholder or is not signed.
- * Nothing in this file is a validated clinical threshold.
+ *   "published"   - from a named standard or study (see sourceIds).
+ *   "proposed"    - the team physician's own value, labelled as such in the app.
+ *   "placeholder" - an engineering value that has not been clinically reviewed.
+ *                   No rule has this status in this release; the app would show
+ *                   a badge wherever one was used.
+ * Every rule also has "signed": true once the team's physician has reviewed and
+ * approved it. tests/release-check.js fails while any rule is a placeholder or
+ * is not signed.
+ * The published values are Earth standards used as conservative escalation
+ * lines. None of the rules is validated in spaceflight.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) { module.exports = factory(); }
@@ -28,15 +29,12 @@
   var NOTE_RESTED = ' Applies to rested readings only (rule CX-REST).';
   var NOTE_BAND2 = 'The team physician\'s values. The band half-width is kept between a smallest value, so that a very steady person does not get a band that is too tight, and a largest value, so that a very variable person can still be flagged.';
   var NOTE_RF = 'Red-flag symptom chosen by the team\'s physician: Act now whatever the readings are.';
-  var NOTE_ENTRY = 'Data-entry sanity bounds that catch typing errors. Not a clinical limit. Stand-in until reviewed.';
-  var NOTE_EWS = 'Stand-in. A typical Earth single-parameter warning value recalled from NEWS2-style early-warning charts. Not yet checked against the published chart and not validated in spaceflight. Confirm or replace in Phase 3.';
-  var NOTE_BAND = 'Stand-in. The band half-width is kept between a smallest value, so that a very steady person does not get a band that is too tight, and a largest value, so that a very variable person is still flagged for a big change. Decide both in Phase 3 (open decision D5).';
 
   return {
-    version: '0.7.0',
+    version: '0.8.0',
     updated: '2026-11-15',
 
-    /* How the personal baseline is computed. Open decision D5. */
+    /* How the personal baseline is computed. */
     baseline: {
       id: 'BL-1', type: 'baseline-config', status: PR, signed: true, version: 1,
       method: 'rolling',       // "rolling": the last windowDays before today. "fixed": the calibration period only.
@@ -50,7 +48,7 @@
       note: 'The team physician\'s method: a rolling 28-day window that ends 7 days before today (rolling because resting temperature drifts up over about 2.5 months in flight), a band of the median plus or minus 3 robust standard deviations, 14 learning days and at least 7 readings, and 2 days in a row before Watch (sleep: 1 day). A slow decline can be followed by a rolling window, so the Act-now limits and trend review still matter.'
     },
 
-    /* Where the crew is. Facts are sourced; the wording of the steps is a draft.
+    /* Where the crew is. Facts are sourced; the steps are in the physician's wording.
      * oneWayDelayMin drives the report countdown, so it is set only where the delay is
      * minutes long. delayLabel is the short text for the header chip. */
     environments: {
@@ -60,7 +58,7 @@
         evac: 'Evacuation is possible in under 24 hours.',
         tier1: ['Tell the crew medical officer now.',
                 'Contact the flight surgeon now on the real-time link.'],
-        tier2: ['Follow the self-care steps below.',
+        tier2: ['Follow the steps on this card.',
                 'Add this to your next private medical conference report.'],
         sourceIds: ['nasa-exmo', 'nasa-chmo-podcast', 'nasa-3001-medops', 'csa-c2m2-2025'],
         note: 'The Canadian Space Agency describes audio-visual communication with the ISS as near-instantaneous (Mani et al., SpaceOps 2025). No delay figure is shown.'
@@ -71,7 +69,7 @@
         evac: 'Evacuation may take up to 2 weeks from lunar orbit.',
         tier1: ['Tell the crew medical officer now and open the on-board checklist.',
                 'Contact the flight surgeon now. Expect a delay of a few seconds each way.'],
-        tier2: ['Follow the self-care steps below.',
+        tier2: ['Follow the steps on this card.',
                 'Add this to your next private medical conference report.'],
         sourceIds: ['nasa-exmo', 'nasa-3001-medops', 'nasa-cislunar-delay-2025'],
         note: 'A NASA study describes one-way delays on the order of 4 to 12 seconds for upcoming Artemis missions (Upasani et al., NASA HRP Investigators\' Workshop 2025). The real delay depends on the relay network. A delay of seconds needs no countdown, so none is shown.'
@@ -82,7 +80,7 @@
         evac: 'Evacuation may not be feasible.',
         tier1: ['Tell the crew medical officer now and start the on-board checklist. Do not wait for the ground.',
                 'Send an urgent report to the flight surgeon. A reply can take 40 minutes or more.'],
-        tier2: ['Follow the self-care steps below.',
+        tier2: ['Follow the steps on this card.',
                 'Add this to your next private medical conference report. Reports are stored and forwarded.'],
         sourceIds: ['nasa-hrp-distance', 'nasa-exmo', 'nasa-3001-medops'],
         note: '20 minutes is the maximum one-way delay NASA gives for Mars. The real delay changes with distance.'
@@ -119,7 +117,7 @@
       id: 'AM-PROTO', type: 'protocol', status: 'published', signed: true, version: 1,
       gridN: 20, sizeMm: 100, squareMm: 5, distanceCm: 33, cardWidthMm: 85.6,
       sourceIds: ['statpearls-amsler', 'nasa-vision-2017'],
-      note: 'Chart 1 geometry: a 10 cm square of 20 squares a side, held at about 33 cm, signed by the team\'s physician. The card-width calibration (85.6 mm) is a stand-in aid, not checked against the card standard.'
+      note: 'Chart 1 geometry: a 10 cm square of 20 squares a side, held at about 33 cm. To show the grid at its true size, the screen is calibrated against a bank card, which is 85.6 mm wide.'
     },
 
     rules: [
@@ -134,7 +132,7 @@
       { id: 'PL-GLU', type: 'plausibility', target: 'glucose', min: 20, max: 600, unit: 'mg/dL', danger: 'both', status: PR, signed: true, version: 1, sourceIds: [], note: NOTE_ENTRY2 },
       { id: 'PL-SPO2', type: 'plausibility', target: 'spo2', min: 50, max: 100, unit: '%', danger: 'low', status: PR, signed: true, version: 1, sourceIds: [], note: NOTE_ENTRY2 },
 
-      /* ---------- Measurement conditions (decision 3.4) ---------- */
+      /* ---------- Measurement conditions ---------- */
       { id: 'CX-REST', type: 'context', target: 'vitals', keys: ['hr', 'bp_sys', 'bp_dia', 'temp'], waitMin: 30, restMin: 5, status: PR, signed: true, version: 1, sourceIds: ['aha-bp-measure', 'nasa-iss-exercise'], note: 'Heart-rate, blood-pressure and temperature limits apply to rested readings only. A reading marked "after exercise" or "after caffeine" is not judged and is left out of the personal range; the person is asked to re-measure after 30 minutes with no exercise or caffeine, then 5 minutes\' rest. These are the American Heart Association\'s blood-pressure measurement instructions; using them for heart rate and temperature is the team physician\'s choice. Station crews exercise at least 2 hours a day.' },
 
       /* ---------- Tier 1 absolute limits: skip the baseline ---------- */
@@ -143,15 +141,15 @@
       { id: 'A-BPS-HI',  type: 'absolute', target: 'bp_sys',  op: '>',  value: 180,  unit: 'mmHg',  tier: 1, status: PUB, signed: true, version: 2, sourceIds: ['aha-acc-2025', 'aha-bp-readings'], note: '2025 AHA/ACC "severe hypertension": above 180/120 mmHg. The AHA advises waiting 5 minutes and measuring again, and contacting a clinician at once if it is still high. With chest pain, breathlessness, back pain, numbness, weakness, vision change or difficulty speaking it is an emergency.' + NOTE_RESTED },
       { id: 'A-BPD-HI',  type: 'absolute', target: 'bp_dia',  op: '>',  value: 120,  unit: 'mmHg',  tier: 1, status: PUB, signed: true, version: 1, sourceIds: ['aha-acc-2025', 'aha-bp-readings'], note: 'The diastolic half of the 2025 AHA/ACC severe-hypertension definition.' + NOTE_RESTED },
       { id: 'A-BPS-LO',  type: 'absolute', target: 'bp_sys',  op: '<=', value: 90,   unit: 'mmHg',  tier: 1, personal: { min: 50, max: 90 }, status: PUB, signed: true, version: 1, sourceIds: ['rcp-news2', 'norsk-2015'], note: NOTE_NEWS2 + NOTE_RESTED + ' 24-hour blood pressure ran 8-10 mmHg lower on long ISS flights, so the flight surgeon can set a lower limit for a person whose normal is low. There is no published floor.' },
-      { id: 'A-TEMP-HI', type: 'absolute', target: 'temp',    op: '>=', value: 39.1, unit: '°C',    tier: 2, urgentReport: true, status: PR, signed: true, version: 2, sourceIds: ['rcp-news2', 'stahn-2017'], note: 'The team physician\'s rule (decision 3.3): urgent, not an emergency. NEWS2 scores 39.1 °C or more as 2, not a red 3, so a high temperature on its own shows Watch with an urgent report: tell the crew medical officer today, the flight surgeon replies within 24 hours, and safety-critical tasks wait until cleared. A red-flag symptom with it, such as new confusion, makes it Act now. Rested readings only (rule CX-REST): resting core temperature was about 1 °C higher on long ISS flights.' },
+      { id: 'A-TEMP-HI', type: 'absolute', target: 'temp',    op: '>=', value: 39.1, unit: '°C',    tier: 2, urgentReport: true, status: PR, signed: true, version: 2, sourceIds: ['rcp-news2', 'stahn-2017'], note: 'The team physician\'s rule: urgent, not an emergency. NEWS2 scores 39.1 °C or more as 2, not a red 3, so a high temperature on its own shows Watch with an urgent report: tell the crew medical officer today, the flight surgeon replies within 24 hours, and safety-critical tasks wait until cleared. A red-flag symptom with it, such as new confusion, makes it Act now. Rested readings only (rule CX-REST): resting core temperature was about 1 °C higher on long ISS flights.' },
       { id: 'A-TEMP-LO', type: 'absolute', target: 'temp',    op: '<=', value: 35.0, unit: '°C',    tier: 1, status: PUB, signed: true, version: 1, sourceIds: ['rcp-news2'], note: NOTE_NEWS2 + NOTE_RESTED },
       { id: 'A-SPO2-LO', type: 'absolute', target: 'spo2',    op: '<=', value: 91,   unit: '%',     tier: 1, status: PUB, signed: true, version: 1, sourceIds: ['rcp-news2'], note: NOTE_NEWS2 + ' On SpO₂ scale 1.' },
-      { id: 'A-GLU-LO',  type: 'absolute', target: 'glucose', op: '<',  value: 54,   unit: 'mg/dL', tier: 2, urgentReport: true, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s6'], note: 'ADA Level 2 hypoglycaemia, which the ADA says requires immediate action: treat it now with fast-acting sugar. The team physician rates it urgent, not an emergency, when the person can treat it themselves (decision 3.2): Watch with an urgent report. Confusion or fainting makes it Act now (red flags). The ADA levels are written for people with diabetes; using them for healthy crew is the team physician\'s judgment.' },
-      { id: 'A-GLU-HI',  type: 'absolute', target: 'glucose', op: '>=', value: 200,  unit: 'mg/dL', tier: 2, urgentReport: true, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s2', 'hgc-2024'], note: '200 mg/dL is the ADA\'s random-glucose line for diagnosing diabetes when there are classic symptoms, and the glucose criterion for diabetic ketoacidosis in the 2024 consensus report. The team physician rates it urgent, not an emergency (decision 3.2): Watch with an urgent report. A red-flag symptom with it makes it Act now. Applying these lines to crew without diabetes is the team physician\'s judgment.' },
+      { id: 'A-GLU-LO',  type: 'absolute', target: 'glucose', op: '<',  value: 54,   unit: 'mg/dL', tier: 2, urgentReport: true, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s6'], note: 'ADA Level 2 hypoglycaemia, which the ADA says requires immediate action: treat it now with fast-acting sugar. The team physician rates it urgent, not an emergency, when the person can treat it themselves: Watch with an urgent report. Confusion or fainting makes it Act now (red flags). The ADA levels are written for people with diabetes; using them for healthy crew is the team physician\'s judgment.' },
+      { id: 'A-GLU-HI',  type: 'absolute', target: 'glucose', op: '>=', value: 200,  unit: 'mg/dL', tier: 2, urgentReport: true, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s2', 'hgc-2024'], note: '200 mg/dL is the ADA\'s random-glucose line for diagnosing diabetes when there are classic symptoms, and the glucose criterion for diabetic ketoacidosis in the 2024 consensus report. The team physician rates it urgent, not an emergency: Watch with an urgent report. A red-flag symptom with it makes it Act now. Applying these lines to crew without diabetes is the team physician\'s judgment.' },
 
       /* ---------- Reference ranges for readings taken only when indicated ---------- */
-      { id: 'R-SPO2', type: 'reference', target: 'spo2',    min: 96, max: 100, unit: '%',     tier: 2, status: PUB, signed: true, version: 1, sourceIds: ['rcp-news2', 'bts-2017'], note: 'NEWS2 scores 96% or more as 0, and the British Thoracic Society gives 96-98% as normal for healthy non-smoking adults.' },
-      { id: 'R-GLU',  type: 'reference', target: 'glucose', min: 70, max: 140, highState: 'check', unit: 'mg/dL', tier: 2, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s6', 'ada-2025-s16', 'shah-2019'], note: 'Blood sugar is checked only when something prompts it (decision 3.2). Below 70 is ADA Level 1 hypoglycaemia: Watch; treat with 15 g of fast-acting sugar and measure again after 15 minutes. From 141 to 199: re-measure first, the team physician\'s choice. The ADA treats glucose above 140 mg/dL as hyperglycaemia in hospital, and healthy adults without diabetes spent a median 96% of the day between 70 and 140 on continuous monitors.' },
+      { id: 'R-SPO2', type: 'reference', target: 'spo2',    min: 96, max: 100, unit: '%',     tier: 2, status: PUB, signed: true, version: 1, sourceIds: ['rcp-news2', 'bts-2017'], note: 'NEWS2 scores 96% or more as 0, and the British Thoracic Society gives 96-98% as the normal range for healthy adults.' },
+      { id: 'R-GLU',  type: 'reference', target: 'glucose', min: 70, max: 140, highState: 'check', unit: 'mg/dL', tier: 2, status: PUB, signed: true, version: 2, sourceIds: ['ada-2026-s6', 'ada-2025-s16', 'shah-2019'], note: 'Blood sugar is checked only when something prompts it. Below 70 is ADA Level 1 hypoglycaemia: Watch; treat with 15 g of fast-acting sugar and measure again after 15 minutes. From 141 to 199: re-measure first, the team physician\'s choice. The ADA treats glucose above 140 mg/dL as hyperglycaemia in hospital, and healthy adults without diabetes spent a median 96% of the day between 70 and 140 on continuous monitors.' },
 
       /* ---------- Tier 2: change from the person's own in-flight baseline ---------- */
       { id: 'B-BPS',    type: 'baseline', target: 'bp_sys', direction: 'both', minHalfWidth: 10, maxHalfWidth: 20,  tier: 2, status: PR, signed: true, version: 1, sourceIds: ['norsk-2015', 'iso-81060-2'], note: NOTE_BAND2 + ' A validated cuff may differ from the reference by up to 5 mmHg on average, with an SD of up to 8, so a smallest half-width of 10 avoids flagging device scatter.' },
@@ -178,20 +176,20 @@
 
       /* ---------- Combined patterns ---------- */
       { id: 'P1', type: 'pattern', target: 'pattern', title: 'Fatigue pattern', tier: 2, shortSleepHours: 6, urgentBeforeEvaDays: 1,
-        status: PUB, signed: true, version: 2, sourceIds: ['iss-sleep-study', 'nasa-rst-spinoff', 'almadani-2025'],
-        note: 'Short sleep together with a slower reaction test. The 6-hour figure is a published association in 24 ISS astronauts, not a validated cut-off, signed by the team\'s physician. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency (the physician\'s value, signed 15 Nov 2026).' },
-      { id: 'P2', type: 'pattern', target: 'pattern', title: 'Possible infection pattern', tier: 2, tier1WithRedFlag: true,
-        status: PR, signed: true, version: 1, sourceIds: ['nasa-hrp-risks', 'stahn-2017'],
-        note: 'The team physician\'s pattern: temperature above the personal band together with heart rate above the personal band, with or without breathing or skin symptoms. Act now when a red-flag symptom is also reported.' },
+        status: PUB, signed: true, version: 2, sourceIds: ['iss-sleep-study', 'nasa-rst-spinoff', 'nasa-hrp-sleep-2016'],
+        note: 'Short sleep together with a slower reaction test. The 6-hour figure is a published association in 24 ISS astronauts, not a validated cut-off, signed by the team\'s physician. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency (the physician\'s value).' },
+      { id: 'P2', type: 'pattern', target: 'pattern', title: 'Possible infection pattern', tier: 2, tier1WithRedFlag: true, urgentReport: true,
+        status: PR, signed: true, version: 2, sourceIds: ['nasa-hrp-risks', 'stahn-2017'],
+        note: 'The team physician\'s pattern: temperature above the personal band together with heart rate above the personal band, with or without breathing or skin symptoms. It is urgent, not an emergency: it shows Watch, the report is set to Urgent, and safety-critical tasks wait for the flight surgeon. Act now when a red-flag symptom is also reported.' },
       { id: 'P3', type: 'pattern', target: 'pattern', title: 'Vision change pattern', tier: 2, tier1WithSymptoms: ['headache', 'vision_change'],
         status: PR, signed: true, version: 1, sourceIds: ['nasa-hrp-risks', 'nasa-vision-2017', 'vision-assess-2023'],
         note: 'The team physician\'s pattern: a new Amsler distortion shows Watch and goes to the flight surgeon as an urgent report. With a headache or a vision symptom the same day it is Act now.' },
       { id: 'P4', type: 'pattern', target: 'pattern', title: 'Strain or illness watch', tier: 2,
-        status: PR, signed: true, disabled: true, version: 1, sourceIds: ['almadani-2025'],
-        note: 'Switched off for the prototype by the team\'s physician: its only citation (Flynn-Evans et al. 2023) is unchecked, and it overlaps P1 and P2. Future work.' },
+        status: PR, signed: true, disabled: true, version: 1, sourceIds: [],
+        note: 'Switched off for the prototype by the team\'s physician: it overlaps the fatigue and possible-infection patterns, and the study behind it has not been verified. Future work.' },
       { id: 'P5', type: 'pattern', target: 'pattern', title: 'Blind spot', tier: 2, urgentBeforeEvaDays: 1,
         status: PR, signed: true, version: 2, sourceIds: ['van-dongen-2003', 'iss-sleep-study', 'dev-2024'],
-        note: 'You rate your alertness inside your usual range, but your reaction test is slower than your usual range. On Earth, after 14 days of 6 hours or less in bed, people were largely unaware of their growing deficits (Van Dongen 2003). Whether astronauts show the same blind spot in flight has not been tested. The team physician\'s pattern. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency (signed 15 Nov 2026).' }
+        note: 'You rate your alertness inside your usual range, but your reaction test is slower than your usual range. On Earth, after 14 days of 6 hours or less in bed, people were largely unaware of their growing deficits (Van Dongen 2003). Whether astronauts show the same blind spot in flight has not been tested. The team physician\'s pattern. When a spacewalk is planned for today or tomorrow it is urgent, not an emergency.' }
     ]
   };
 });

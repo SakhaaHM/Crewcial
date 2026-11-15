@@ -1,8 +1,8 @@
 /*! Crewcial - rules engine. Pure functions: no DOM, no storage, no clock.
  * AI-assistance disclosure: this file was generated with Claude (Anthropic) for
  * Team Crewcial, NASA Space Apps Challenge 2026, and is covered by the tests in
- * tests/. The clinical numbers it applies live in data/rules.js and are
- * placeholders until the team's physician signs them off.
+ * tests/. The clinical numbers it applies live in data/rules.js and are signed
+ * off by the team's physician.
  * Not a medical device. Advisory prototype only.
  */
 (function (root, factory) {
@@ -157,10 +157,10 @@
     out.ready = daysInPhase >= cfg.calibrationDays && vals.length >= cfg.minReadings;
     return out;
   }
-  /* Rule CX-REST (decision 3.4): a reading marked after exercise or after caffeine. */
+  /* Rule CX-REST: a reading marked after exercise or after caffeine. */
   function notRested(p) { return !!(p && p.context && (p.context.postExercise || p.context.caffeine)); }
   function restKeyOf(key, ix) { return !!(ix.context && ix.context.keys && ix.context.keys.indexOf(key) !== -1); }
-  /* Decision 3.5: the flight surgeon may set one person's own Act-now limit where the rule allows it. */
+  /* The flight surgeon may set one person's own Act-now limit where the rule allows it. */
   function personalLimit(rule, ctx) {
     var set = ctx && ctx.limits ? ctx.limits[rule.id] : null;
     if (!rule.personal || !isNum(set)) { return { value: rule.value, personal: false }; }
@@ -169,7 +169,7 @@
     if (isNum(rule.personal.max)) { v = Math.min(rule.personal.max, v); }
     return { value: v, personal: true };
   }
-  /* Decision 3.7: an impossible value on the dangerous side of the entry bounds. */
+  /* An impossible value on the dangerous side of the entry bounds. */
   function dangerSide(pl, v) {
     if (!pl || !pl.danger) { return false; }
     return (pl.danger !== 'high' && v < pl.min) || (pl.danger !== 'low' && v > pl.max);
@@ -216,7 +216,7 @@
       return out;
     }
 
-    /* 2. Absolute limits: they skip the baseline. Tier 1 is Act now. Tier 2 (decisions 3.2 and 3.3)
+    /* 2. Absolute limits: they skip the baseline. Tier 1 is Act now. Tier 2
        is urgent, not an emergency: Watch, with the report set to Urgent. */
     var abs = ix.abs[key] || [];
     for (var i = 0; i < abs.length; i++) {
@@ -279,7 +279,7 @@
       if (today.value >= rf.min && today.value <= rf.max) {
         out.state = 'ok'; out.reason = 'Inside the reference range of ' + refText + '.';
       } else if (today.value > rf.max && rf.highState === 'check') {
-        /* Decision 3.2: a high blood sugar under the urgent limit is measured again first. */
+        /* A high blood sugar under the urgent limit is measured again first. */
         out.state = 'check'; out.deviation = 'high'; out.refHigh = true;
         out.reason = 'Above the reference range of ' + refText + '. Measure again before judging it.';
       } else {
@@ -549,8 +549,8 @@
   }
   function evalPatterns(ind, ctx) {
     var ix = ctx.ix, P = ix.patterns, out = [];
-    /* 0.7.0, signed 15 Nov 2026: a Watch pattern that carries urgentBeforeEvaDays is urgent, not an
-       emergency, when a spacewalk is planned for today or within that many days. */
+    /* A Watch pattern that carries urgentBeforeEvaDays is urgent, not an emergency, when a spacewalk
+       is planned for today or within that many days. One that carries urgentReport always is. */
     var evaIn = isNum(ctx.evaDay) ? ctx.evaDay - ctx.day : null;
     function add(rule, tier, supporting) {
       var p = { id: rule.id, title: rule.title, tier: tier, state: tier === 1 ? 'act' : 'watch', supporting: supporting,
@@ -558,13 +558,15 @@
       if (tier !== 1 && isNum(rule.urgentBeforeEvaDays) && evaIn !== null && evaIn >= 0 && evaIn <= rule.urgentBeforeEvaDays) {
         p.urgent = true; p.urgentWhy = 'spacewalk'; p.evaInDays = evaIn;
         supporting.push('A spacewalk is planned ' + (evaIn === 0 ? 'today' : evaIn === 1 ? 'tomorrow' : 'in ' + evaIn + ' days'));
+      } else if (tier !== 1 && rule.urgentReport) {
+        p.urgent = true; p.urgentWhy = 'rule';
       }
       out.push(p);
     }
     var sleep = part(ind, 'sleep', 'sleep'), hr = part(ind, 'hr', 'hr'), temp = part(ind, 'temp', 'temp'), mood = part(ind, 'mood', 'mood');
     var rt = ind.rt, am = ind.amsler;
 
-    /* Decision 2.2: the blind spot is evaluated first, so it leads when it shows with the fatigue pattern. */
+    /* The blind spot is evaluated first, so it leads when it shows with the fatigue pattern. */
     if (P.P5 && rt && rt.feel && rt.feel.state === 'blindspot' && !rt.demoLength && !rt.stale) {
       add(P.P5, P.P5.tier, ['You rated your alertness ' + rt.feel.rating + ' of 10, normal for you (usually about ' + fmtRating(rt.feel.band.median) + ')',
                             'Reaction test: ' + rt.pctSlower + '% slower than your usual, outside your own range']);
@@ -670,10 +672,10 @@
   /* Which route a report takes by default, and who may see it. Private by default. */
   function suggestRoute(tier, behavioural, flagged, ix) {
     if (tier === 1) { return 'urgent'; }
-    /* Decision 4.2: a new Amsler distortion reaches the flight surgeon without waiting for the weekly conference. */
+    /* A new Amsler distortion reaches the flight surgeon without waiting for the weekly conference. */
     var urgentAmsler = !ix || !ix.amsler || ix.amsler.urgentReport;
     if (urgentAmsler && (flagged || []).some(function (f) { return (f.id === 'P3' || f.id === 'amsler') && f.state === 'watch'; })) { return 'urgent'; }
-    /* Decisions 3.2 and 3.3: an urgent limit sends the report as Urgent too. */
+    /* An urgent limit sends the report as Urgent too. */
     if ((flagged || []).some(function (f) { return f.urgent && f.state === 'watch'; })) { return 'urgent'; }
     return behavioural ? 'ppc' : 'pmc';
   }
@@ -814,7 +816,7 @@
       case 'pattern':
         var eva = isNum(r.urgentBeforeEvaDays) ? ' With a spacewalk planned for today' + (r.urgentBeforeEvaDays >= 1 ? ' or tomorrow' : '') + ' it is urgent, not an emergency: the report is set to Urgent.' : '';
         if (r.id === 'P1') { return 'Sleep of ' + r.shortSleepHours + ' hours or less (or below the personal band) together with a reaction test slower than the personal band.' + eva; }
-        if (r.id === 'P2') { return 'Temperature above the personal band together with heart rate above the personal band. Act now if a red-flag symptom is also reported.'; }
+        if (r.id === 'P2') { return 'Temperature above the personal band together with heart rate above the personal band.' + (r.urgentReport ? ' It is urgent, not an emergency: the report is set to Urgent.' : '') + ' Act now if a red-flag symptom is also reported.'; }
         if (r.id === 'P3') { return 'A newly marked Amsler square. Act now if a headache or a vision symptom is reported the same day.'; }
         if (r.id === 'P4') { return 'Sleep below the personal band together with resting heart rate above the personal band.'; }
         if (r.id === 'P5') { return 'Your alertness rating is inside your own usual range while your reaction test is slower than your own usual range. Needs a full-length test.' + eva; }

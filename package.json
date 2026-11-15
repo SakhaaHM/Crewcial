@@ -1,6 +1,6 @@
 {
   "name": "crewcial",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Crewcial: astronaut self-assessment prototype (NASA Space Apps Challenge 2026). Not a medical device.",
   "scripts": {
