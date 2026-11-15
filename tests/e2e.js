@@ -115,6 +115,14 @@ async function noSideScroll(page, label) {
   check('readings covered by a pattern do not repeat its steps', /Part of the fatigue pattern/.test(await text(page, '#card-sleep') || '') && !/What to do now/.test(await text(page, '#card-sleep') || ''));
   check('the medication rule is stated once on the page', ((await text(page, 'main')) || '').split('Take medication only as directed').length === 2);
   check('signed rules carry no placeholder badge on her cards (0.4.0)', (await page.locator('#card-P1 .badge--placeholder').count()) === 0 && (await page.locator('#card-P1 .badge--signed').count()) >= 1);
+  { /* 0.7.0, signed 15 Nov 2026: the day before her spacewalk, the blind spot and the fatigue pattern are urgent, not an emergency */
+    const p5 = await page.evaluate(() => { const c = document.querySelector('#card-P5'); return { tag: (c.querySelector(':scope > .urgent-tag') || {}).textContent || '', text: c.textContent, reviewed: c.querySelectorAll('.reviewed').length, draft: c.querySelectorAll('.draft').length }; });
+    const p1 = await page.evaluate(() => { const c = document.querySelector('#card-P1'); return { tag: (c.querySelector(':scope > .urgent-tag') || {}).textContent || '', reviewed: c.querySelectorAll('.reviewed').length, draft: c.querySelectorAll('.draft').length }; });
+    check('the blind-spot card is urgent, not an emergency, because a spacewalk is planned tomorrow', /Urgent, not an emergency/.test(p5.tag) && /A spacewalk is planned tomorrow/.test(p5.text));
+    check('its steps say to tell the crew medical officer today and to hold safety-critical tasks', /Tell the crew medical officer today\./.test(p5.text) && /Hold safety-critical tasks, such as a spacewalk, until the flight surgeon clears you\./.test(p5.text) && /The flight surgeon replies within 24 hours/.test(p5.text) && !/next private medical conference/.test(p5.text));
+    check('the fatigue card is urgent too', /Urgent, not an emergency/.test(p1.tag));
+    check('steps the physician has reviewed say so and carry no Draft label', p5.reviewed === 1 && p5.draft === 0 && p1.reviewed === 1 && p1.draft === 0);
+  }
   check('a Watch card shows one next step and folds the rest behind Details', (await page.locator('#card-P1 > .next').count()) === 1 && (await page.locator('#card-P1 > details.more:not([open])').count()) === 1 && (await page.locator('#card-P1 > .tell').count()) === 0);
   check('sources on result cards are folded, never written out', (await page.locator('main p.src').count()) === 0 && (await page.locator('main details.srcs').count()) >= 1 && (await page.locator('main details.srcs[open]').count()) === 0);
   check('in-range rows keep their reason behind "Why this colour?"', (await page.locator('#card-bp > p.reason').count()) === 0 && /usual range/.test(await text(page, '#card-bp details.whyc') || ''));
@@ -147,11 +155,13 @@ async function noSideScroll(page, label) {
   await goto(page, 'report');
   const sVal = await page.inputValue('#rp-S');
   check('report is pre-filled with the situation', /Zahra/.test(sVal) && /Fatigue pattern/.test(sVal));
-  check('default route is the private medical conference', await page.isChecked('input[name="rp-route"][value="pmc"]'));
+  check('with her spacewalk tomorrow, the report is pre-set to Urgent and asks for a reply within 24 hours (0.7.0)', (await page.isChecked('input[name="rp-route"][value="urgent"]')) && /^Urgent, not an emergency\. Requesting a reply from the flight surgeon within 24 hours\./.test(await page.inputValue('#rp-R')));
   await page.click('[data-act="send-report"]');
   check('a report cannot be sent without approval', /approve/.test(await text(page, '#rp-error') || ''));
+  await page.check('input[name="rp-route"][value="pmc"]');
+  check('audience text changes with the route', /Not by the crew medical officer/.test(await text(page, '#rp-aud') || ''));
   await page.check('input[name="rp-route"][value="urgent"]');
-  check('audience text changes with the route', /crew medical officer and the flight surgeon/.test(await text(page, '#rp-aud') || ''));
+  check('the urgent route is seen by the crew medical officer and the flight surgeon', /crew medical officer and the flight surgeon/.test(await text(page, '#rp-aud') || ''));
   await page.check('#rp-approve');
   await page.screenshot({ path: path.join(SHOTS, '05-report-phone.png'), fullPage: true });
   await page.click('[data-act="send-report"]');
@@ -316,6 +326,7 @@ async function noSideScroll(page, label) {
   const urgHash = await page.evaluate(() => location.hash + ' ' + (document.querySelector('.error, .form-error, [role="alert"]') || {}).textContent);
   check('39.4 °C shows Watch at the urgent limit, not Act now', (await page.locator('#card-temp.card--watch').count()) === 1 && /urgent limit of 39\.1/.test(tempCard) && /Urgent, not an emergency/.test(tempCard), urgHash + ' | ' + tempCard.slice(0, 200));
   check('a blood sugar of 52 says treat now and is urgent, not an emergency', /15 g of fast-acting sugar/.test(gluCard) && /Urgent, not an emergency/.test(gluCard), gluCard.slice(0, 200));
+  check('steps the physician has not reviewed yet keep the Draft label', (await page.locator('#card-glucose .draft').count()) === 1 && (await page.locator('#card-glucose .reviewed').count()) === 0);
   await page.screenshot({ path: path.join(SHOTS, '17-urgent-phone.png'), fullPage: true });
   await goto(page, 'report');
   check('the report for an urgent limit is set to Urgent', await page.isChecked('input[name="rp-route"][value="urgent"]'));

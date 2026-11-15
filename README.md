@@ -44,7 +44,7 @@ more, is. Crewcial is built for that moment.
 Built by Team Crewcial for the NASA Space Apps Challenge 2026, challenge
 "Create Health Monitoring Software for Astronauts on Space Missions".
 
-> **Status: prototype (version 0.6.2, 15 November 2026).**
+> **Status: prototype (version 0.7.0, 15 November 2026).**
 > Crewcial is a hackathon prototype for self-assessment training and research.
 > It is **not a medical device**. It gives advice only and never replaces the
 > crew medical officer or the flight surgeon.
@@ -93,7 +93,10 @@ fictional crew members. A banner says "Simulated data" on every screen.
   astronauts show the same blind spot in flight has not been tested.
 - **Trend charts** with the personal range drawn behind the line.
 - **Spacewalk readiness summary.** It lists the open flags for the flight
-  surgeon. It never says go or no-go.
+  surgeon. It never says go or no-go. If the fatigue pattern or the blind spot
+  shows on the day of a spacewalk or the day before, it is urgent, not an
+  emergency: tell the crew medical officer today, the report is set to Urgent,
+  and safety-critical tasks wait until the flight surgeon clears the person.
 - **Private report** in four parts (situation, background, assessment,
   request). The crew member approves it before it is sent, and chooses the
   route: next private medical conference, urgent, or private psychological
@@ -116,7 +119,7 @@ fictional crew members. A banner says "Simulated data" on every screen.
 | Reaction test and Amsler grid procedures | Built from published descriptions and signed off |
 | Clinical numbers (limits, band widths, schedules, red flags) | Signed off: each is either from a checked source or labelled as the physician's own value |
 | Learn cards | All five questions answered for every indicator, each from a checked source or saying that no checked source covers it. Advice lines are marked "Draft" |
-| Guidance texts and crew medical officer checklists | **Draft**, labelled on screen, until the physician's line-by-line review |
+| Guidance texts and crew medical officer checklists | The steps for the fatigue pattern and the blind spot are reviewed by the physician and say so on screen. All other texts are **Draft**, labelled on screen, until her line-by-line review |
 | Demo crew and all demo readings | **Fictional and simulated** by `js/demo.js` |
 | Sending a report | **Simulated.** Nothing leaves the device |
 | Camera input, usability study results | Not built / not done yet |
@@ -151,8 +154,8 @@ Results of the last full run, 15 November 2026:
 
 | Command | What it checks | Result |
 |---|---|---|
-| `node --test tests/engine.test.js tests/scenarios.test.js` | Every rule type, 21 written scenarios and the demo story | 87 of 87 pass |
-| `node tests/e2e.js` | A real browser opens the app from disk and walks every screen on phone and laptop sizes, in light and dark | 216 of 216 pass |
+| `node --test tests/engine.test.js tests/scenarios.test.js` | Every rule type, 23 written scenarios and the demo story | 89 of 89 pass |
+| `node tests/e2e.js` | A real browser opens the app from disk and walks every screen on phone and laptop sizes, in light and dark | 222 of 222 pass |
 | `node tests/hosted-check.js` | The app served as a web page under a strict content policy, and inside a locked-down frame with storage refused | 43 of 43 pass |
 | `node tests/shadow.js` | The rules run over simulated crew-days with injected events | See below |
 | `node tests/release-check.js` | Are all rules sourced and signed off? | Passes: all 47 rules are sourced or the physician's own, and signed |
@@ -175,6 +178,26 @@ come from our own generator, so the numbers say nothing about clinical
 accuracy. The rule settings were not tuned to reach the targets. The simulated
 crews in this run have no alertness ratings, so it does not exercise the
 blind-spot pattern; the unit and scenario tests do.
+
+## Changes in 0.7.0 (15 November 2026)
+
+- New, signed by the physician on 15 November: when the fatigue pattern (P1) or
+  the blind spot (P5) shows and a spacewalk is planned for today or tomorrow,
+  it is urgent, not an emergency. The card stays Watch and adds "Urgent, not
+  an emergency" and the reason ("A spacewalk is planned tomorrow"). The steps
+  add "Hold safety-critical tasks, such as a spacewalk, until the flight
+  surgeon clears you", "Who to tell" says to tell the crew medical officer
+  today, and the report is pre-set to Urgent, so the flight surgeon can answer
+  before the spacewalk. With no spacewalk near, both patterns stay on the
+  weekly route as before. Both rules are now version 2; the count stays 47.
+- The report's request line for any urgent finding now reads "Urgent, not an
+  emergency. Requesting a reply from the flight surgeon within 24 hours."
+  It used to ask for the weekly conference.
+- The steps on the fatigue and blind-spot cards were read and approved by the
+  physician. These two cards say "Steps reviewed by the team's physician";
+  every other card keeps its Draft label.
+- Tests: scenarios S22 and S23 (23 in all; 89 rule and scenario tests) and 6
+  new browser checks (222 in all).
 
 ## Changes in 0.6.2 (15 November 2026)
 

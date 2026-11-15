@@ -169,7 +169,7 @@
           q1: { text: 'Yes. NASA studies track sleep with a wrist sensor and with sleep reports.', sourceIds: ['nasa-standard-measures', 'nasa-archer'] },
           q2: { text: 'Chronic sleep loss, workload and disrupted body clocks make other hazards worse.', sourceIds: ['nasa-hrp-risks'] },
           q3: { text: 'In 24 astronauts on 6-month ISS missions, nights of 6 hours or less went with slower reaction speed and higher stress.', sourceIds: ['iss-sleep-study'] },
-          q4: { text: 'A night shorter than your own range shows as Watch. Short sleep together with a slower reaction test shows the fatigue pattern, and adds a Caution to the spacewalk readiness summary.', sourceIds: [] },
+          q4: { text: 'A night shorter than your own range shows as Watch. Short sleep together with a slower reaction test shows the fatigue pattern, and adds a Caution to the spacewalk readiness summary. On the day of a spacewalk or the day before, that pattern is urgent, not an emergency.', sourceIds: [] },
           q5: { text: 'Draft, from the team\'s dissertation: a short nap, well-timed caffeine, or asking to reschedule a high-criticality task. Longer-term countermeasures are guided by flight doctors.', sourceIds: ['almadani-2025'] }
         } },
       { id: 'mood', label: 'Mood and stress', unit: '/100', schedule: 'daily', region: 'brain', isPrivate: true,
@@ -212,7 +212,7 @@
           q1: { text: 'Yes. ISS astronauts have used NASA\'s Reaction Self Test, a 3-minute reaction-time test, since 2009. Before each test, Crewcial asks how alert you feel from 0 (tired) to 10 (alert), the scale used before test sessions in a study of ISS astronauts.', sourceIds: ['nasa-rst-spinoff', 'nasa-rst-ntrs', 'dev-2024'] },
           q2: { text: 'People are poor judges of their own tiredness. After 14 days of 6 hours or less in bed, people\'s sleepiness ratings levelled off while their test performance kept getting worse, and they were largely unaware of it. The test gives an objective check, and Crewcial shows whether it agrees with how you feel.', sourceIds: ['van-dongen-2003', 'nasa-rst-spinoff'] },
           q3: { text: 'In ISS astronauts, nights of 6 hours or less went with slower reaction speed.', sourceIds: ['iss-sleep-study'] },
-          q4: { text: 'A result slower than your own range shows as Watch. With short sleep it shows the fatigue pattern, and before a spacewalk it adds a Caution to the readiness summary for the flight surgeon. If you feel as alert as usual but the test is slower than your usual, Crewcial shows the blind-spot pattern.', sourceIds: ['nasa-3001-medops'] },
+          q4: { text: 'A result slower than your own range shows as Watch. With short sleep it shows the fatigue pattern, and before a spacewalk it adds a Caution to the readiness summary for the flight surgeon. On the day of a spacewalk or the day before, the fatigue pattern and the blind spot are urgent, not an emergency: tell the crew medical officer today, and the report is set to Urgent. If you feel as alert as usual but the test is slower than your usual, Crewcial shows the blind-spot pattern.', sourceIds: ['nasa-3001-medops'] },
           q5: { text: 'Draft, from the team\'s dissertation: a short nap, well-timed caffeine, or asking to reschedule a high-criticality task.', sourceIds: ['almadani-2025'] }
         } },
       { id: 'amsler', label: 'Amsler grid', unit: '', schedule: 'scheduled', region: 'eyes', parts: [],
@@ -243,7 +243,8 @@
       q5: 'What helps prevent a serious problem?'
     },
 
-    /* Draft guidance. Everything here needs the physician's review. */
+    /* Draft guidance, except the sets marked reviewed: true, which the team's physician read and approved
+       as written (P1 and P5, with the urgent lines, on 15 Nov 2026). Everything else needs her review. */
     guidance: {
       generic: {
         t2: ['Repeat the measurement under the same conditions: rested, same device.',
@@ -260,7 +261,8 @@
                   'If tomorrow\'s reading is also outside your range, this becomes Watch.'],
         /* Urgent, not an emergency (decisions 3.2 and 3.3): Watch with the report set to Urgent. */
         urgentTell: ['Tell the crew medical officer today.',
-                     'Send the report, set to Urgent. The flight surgeon replies within 24 hours.']
+                     'Send the report, set to Urgent. The flight surgeon replies within 24 hours.'],
+        urgentHold: 'Hold safety-critical tasks, such as a spacewalk, until the flight surgeon clears you.'
       },
       temp: { urgent: ['Re-measure now: rest for 5 minutes, then repeat the reading.',
                        'If new confusion or fainting comes with it, act now: tell the crew medical officer now.',
@@ -283,10 +285,10 @@
       mood:  { t2: ['You can use the private psychological conference route.', 'Mood entries are never shown to crewmates.', 'Add this to a private report if you want the flight surgeon to see it.'], sourceIds: ['nasa-crewtime', 'nasa-3001-medops'] },
       amsler: { t2: ['Repeat the grid test for the same eye under the same conditions.', 'Send the report to the flight surgeon. It is set to Urgent, so it does not wait for the weekly conference.'], sourceIds: [] },
       symptoms: { t2: ['Note how it changes during the day.', 'Add it to your next private medical conference report.'], sourceIds: [] },
-      P1: { t2: ['Consider a short nap.', 'Time your caffeine.', 'Ask to reschedule any high-criticality task.', 'Send the readiness summary to the flight surgeon before a spacewalk.'], sourceIds: ['almadani-2025', 'nasa-3001-medops'] },
+      P1: { t2: ['Consider a short nap.', 'Time your caffeine.', 'Ask to reschedule any high-criticality task.', 'Send the readiness summary to the flight surgeon before a spacewalk.'], reviewed: true, sourceIds: ['almadani-2025', 'nasa-3001-medops'] },
       P2: { t2: ['Repeat temperature and heart rate after 5 minutes of rest.', 'Tell the crew medical officer today.', 'Record any symptoms.'], sourceIds: [] },
       P3: { t2: ['Repeat the grid test for the same eye.', 'Send the report to the flight surgeon. It is set to Urgent, so it does not wait for the weekly conference.'], sourceIds: [] },
-      P5: { t2: ['Do not rely on how you feel today: the test says you are slower than your usual.', 'Repeat the test after a short break, on the same device.', 'Tell the crew medical officer before any high-criticality task.', 'Consider a short nap, timed caffeine, or asking to reschedule a high-criticality task.'], sourceIds: ['almadani-2025'] },
+      P5: { t2: ['Do not rely on how you feel today: the test says you are slower than your usual.', 'Repeat the test after a short break, on the same device.', 'Tell the crew medical officer before any high-criticality task.', 'Consider a short nap, timed caffeine, or asking to reschedule a high-criticality task.'], reviewed: true, sourceIds: ['almadani-2025'] },
       P4: { t2: ['Plan a lighter day if the schedule allows.', 'Recheck resting heart rate tomorrow morning.', 'Add this to your next private medical conference report.'], sourceIds: ['almadani-2025'] }
     },
 

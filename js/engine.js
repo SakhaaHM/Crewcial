@@ -549,9 +549,17 @@
   }
   function evalPatterns(ind, ctx) {
     var ix = ctx.ix, P = ix.patterns, out = [];
+    /* 0.7.0, signed 15 Nov 2026: a Watch pattern that carries urgentBeforeEvaDays is urgent, not an
+       emergency, when a spacewalk is planned for today or within that many days. */
+    var evaIn = isNum(ctx.evaDay) ? ctx.evaDay - ctx.day : null;
     function add(rule, tier, supporting) {
-      out.push({ id: rule.id, title: rule.title, tier: tier, state: tier === 1 ? 'act' : 'watch', supporting: supporting,
-                 ruleIds: [rule.id], regions: PATTERN_REGIONS[rule.id] || [], placeholder: rule.status === 'placeholder' });
+      var p = { id: rule.id, title: rule.title, tier: tier, state: tier === 1 ? 'act' : 'watch', supporting: supporting,
+                ruleIds: [rule.id], regions: PATTERN_REGIONS[rule.id] || [], placeholder: rule.status === 'placeholder' };
+      if (tier !== 1 && isNum(rule.urgentBeforeEvaDays) && evaIn !== null && evaIn >= 0 && evaIn <= rule.urgentBeforeEvaDays) {
+        p.urgent = true; p.urgentWhy = 'spacewalk'; p.evaInDays = evaIn;
+        supporting.push('A spacewalk is planned ' + (evaIn === 0 ? 'today' : evaIn === 1 ? 'tomorrow' : 'in ' + evaIn + ' days'));
+      }
+      out.push(p);
     }
     var sleep = part(ind, 'sleep', 'sleep'), hr = part(ind, 'hr', 'hr'), temp = part(ind, 'temp', 'temp'), mood = part(ind, 'mood', 'mood');
     var rt = ind.rt, am = ind.amsler;
@@ -690,7 +698,7 @@
     var states = Object.keys(regions).map(function (k) { return regions[k].state; });
     var flagged = [];
     patterns.forEach(function (p) {
-      flagged.push({ kind: 'pattern', id: p.id, label: p.title, state: p.state, tier: p.tier, reason: p.supporting.join('. ') + '.', ruleIds: p.ruleIds, placeholder: p.placeholder });
+      flagged.push({ kind: 'pattern', id: p.id, label: p.title, state: p.state, tier: p.tier, reason: p.supporting.join('. ') + '.', ruleIds: p.ruleIds, placeholder: p.placeholder, urgent: !!p.urgent });
     });
     Object.keys(ind).forEach(function (id) {
       var s = ind[id];
@@ -754,8 +762,10 @@
       (res.patterns.length ? 'Patterns: ' + res.patterns.map(function (p) { return p.title; }).join('; ') + '. ' : '') +
       (ruleIds.length ? 'Rules applied: ' + ruleIds.join(', ') + '. ' : '') +
       (anyPlaceholder(ruleIds, ctx.ix) ? 'Some of these rules are placeholders and are not clinically validated.' : '');
+    var urgent2 = !tier1 && items.some(function (f) { return f.urgent; });
     var R = tier1
       ? 'Requesting urgent guidance from the flight surgeon. Crew medical officer informed: yes / no.'
+      : urgent2 ? 'Urgent, not an emergency. Requesting a reply from the flight surgeon within 24 hours. Crew medical officer informed: yes / no.'
       : (items.length ? 'Requesting review at the next private medical conference. Self-care started: yes / no.' : 'No request.');
     if (isNum(ctx.evaDay) && ctx.evaDay - res.day >= 0 && ctx.evaDay - res.day <= 2) {
       R += ' A spacewalk is planned for mission day ' + ctx.evaDay + '. Requesting the readiness decision.';
@@ -802,11 +812,12 @@
       case 'symptom': return 'Watch when any symptom that is not a red flag is reported.';
       case 'amsler': return 'Watch when ' + r.minNewSquares + ' or more squares are newly marked, compared with the previous map of the same eye.' + (r.urgentReport ? ' The report is set to Urgent.' : '');
       case 'pattern':
-        if (r.id === 'P1') { return 'Sleep of ' + r.shortSleepHours + ' hours or less (or below the personal band) together with a reaction test slower than the personal band.'; }
+        var eva = isNum(r.urgentBeforeEvaDays) ? ' With a spacewalk planned for today' + (r.urgentBeforeEvaDays >= 1 ? ' or tomorrow' : '') + ' it is urgent, not an emergency: the report is set to Urgent.' : '';
+        if (r.id === 'P1') { return 'Sleep of ' + r.shortSleepHours + ' hours or less (or below the personal band) together with a reaction test slower than the personal band.' + eva; }
         if (r.id === 'P2') { return 'Temperature above the personal band together with heart rate above the personal band. Act now if a red-flag symptom is also reported.'; }
         if (r.id === 'P3') { return 'A newly marked Amsler square. Act now if a headache or a vision symptom is reported the same day.'; }
         if (r.id === 'P4') { return 'Sleep below the personal band together with resting heart rate above the personal band.'; }
-        if (r.id === 'P5') { return 'Your alertness rating is inside your own usual range while your reaction test is slower than your own usual range. Needs a full-length test.'; }
+        if (r.id === 'P5') { return 'Your alertness rating is inside your own usual range while your reaction test is slower than your own usual range. Needs a full-length test.' + eva; }
         return r.note || '';
       case 'baseline-config': return 'Personal band: median plus or minus ' + r.k + ' robust standard deviations of ' + r.windowDays + ' days' +
         (r.method === 'rolling' ? ', ending ' + (r.lagDays || 0) + ' days before today so that a current episode does not shift it' : ' of the calibration period') +

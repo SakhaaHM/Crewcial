@@ -11,7 +11,7 @@
   var E = CW.Engine, C = CW.Content, RULES = CW.Rules, SOURCES = CW.Sources, Demo = CW.Demo, Store = CW.Storage, Charts = CW.Charts, Figure = CW.Figure;
   var ix = E.indexRules(RULES);
   var RELEASE = E.releaseCheck(RULES);
-  var APP_VERSION = '0.6.2';
+  var APP_VERSION = '0.7.0';
   var DAY_MS = 86400000;
   var srcById = {}, indById = {}, regionById = {}, symById = {};
   SOURCES.forEach(function (s) { srcById[s.id] = s; });
@@ -85,6 +85,8 @@
   }
   function steps(list) { return '<ol class="steps">' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>'; }
   var DRAFT = '<p class="draft">Draft guidance, not yet reviewed by the team\'s physician.</p>';
+  /* 0.7.0: a guidance set marked reviewed: true in data/content.js was read and approved by the physician. */
+  var REVIEWED = '<p class="reviewed">Steps reviewed by the team\'s physician.</p>';
   /* Minimal cards (0.3.0): the essentials stay in view; everything else sits behind one Details tap. */
   function more(inner, label) { return inner ? '<details class="more"><summary>' + esc(label || 'Details') + '</summary><div class="more-b">' + inner + '</div></details>' : ''; }
   function nextStep(t) { return t ? '<p class="next"><strong>Next:</strong> ' + esc(t) + '</p>' : ''; }
@@ -309,11 +311,20 @@
   }
   function patternCard(p) {
     var g = C.guidance[p.id] || {}, list = p.state === 'act' ? C.guidance.generic.t1 : (g.t2 || C.guidance.generic.t2), extra = '';
+    /* 0.7.0: urgent, not an emergency (a spacewalk today or tomorrow): the hold step and the urgent "Who to tell". */
+    var urgent = !!p.urgent && p.state === 'watch';
+    var label = (p.state !== 'act' && g.t2 && g.reviewed) ? REVIEWED : DRAFT;
+    if (urgent) { list = list.concat([C.guidance.generic.urgentHold]); }
     var h = '<article class="card card--' + p.state + ' card--pattern" id="card-' + p.id + '">';
     h += '<header class="card-h">' + tile(p.state) + '<h3>' + esc(p.title) + '</h3></header>';
     h += '<ul class="support">' + p.supporting.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>';
     if (p.state === 'act') { h += '<div class="do"><h4>What to do now</h4>' + steps(list) + '</div>' + tellBlock(p.tier, false); extra += DRAFT; }
-    else { h += nextStep(list[0]); extra += '<div class="do"><h4>What to do now</h4>' + steps(list) + DRAFT + '</div>' + tellBlock(p.tier, false); }
+    else {
+      h += nextStep(list[0]);
+      if (urgent) { h += '<p class="urgent-tag">Urgent, not an emergency</p>'; }
+      extra += '<div class="do"><h4>What to do now</h4>' + steps(list) + label + '</div>' +
+        (urgent ? '<div class="tell"><h4>Who to tell</h4>' + steps(C.guidance.generic.urgentTell) + '</div>' : tellBlock(p.tier, false));
+    }
     if (p.placeholder) { extra += '<p class="ph"><span class="badge badge--placeholder">Placeholder</span> This pattern is not clinically reviewed yet.</p>'; }
     extra += whyColour(p.ruleIds);
     h += more(extra);
