@@ -1,0 +1,4 @@
+# Test output (screenshots and results from tests/e2e.js)
+tests/shots/
+tests/e2e-result.json
+node_modules/

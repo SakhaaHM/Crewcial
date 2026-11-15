@@ -1,0 +1,435 @@
+/*! Crewcial - the astronaut figure on the home screen.
+ * AI-assistance disclosure: this file was generated with Claude (Anthropic) for
+ * Team Crewcial, NASA Space Apps Challenge 2026. It draws a fictional astronaut in
+ * an exploration-style spacesuit. The demo crew are invented and belong to no real
+ * astronaut. The figure is labelled "AI-generated illustration" inside the drawing.
+ *
+ * How it works: the suit, face and helmet are drawn once as decoration (they ignore
+ * taps). Eight body systems are drawn on top as a see-through "scan" layer. Each one
+ * sits inside a link made by the app (js/app.js), and the link's status class decides
+ * how it is painted (css/app.css): parts in range stay faint, a part that needs
+ * attention is lit in its status colour. Skin is shown as a tint over the suit.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.Crewcial = root.Crewcial || {}; root.Crewcial.Figure = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var CX = 110;
+  /* The head is drawn around (110, 56) and placed at (110, 60), 6% larger. */
+  var HEAD_T = 'matrix(1.06 0 0 1.06 -6.6 0.64)';
+  var HAIRS = ['long', 'bun', 'curly', 'short'];
+  var DEFAULTS = {
+    f: { body: 'f', skin: '#c48e69', shade: '#a2704e', hair: 'bun', hairColor: '#2a211d', beard: false },
+    m: { body: 'm', skin: '#b7815f', shade: '#956348', hair: 'short', hairColor: '#221b17', beard: false }
+  };
+  /* Body shapes, drawn to scale (0.6.0): the figure is about 7.5 heads tall, the hip
+     joint sits a little above half the height, and the fingertips reach mid-thigh.
+     From the ground (y 421) up, in body heights: knee 0.28, crotch 0.47, wrist 0.48,
+     waist 0.6, elbow 0.62, shoulder 0.8, chin 0.87. f and m differ in shoulders,
+     waist, arms and face. arm and leg are axes (shoulder or hip joint down to the
+     wrist or ankle); armW and legW are the suit's half-widths along them. */
+  var BODY = {
+    f: { sh: 52, chest: 36, waist: 28.5, hip: 34, organK: 1,
+         arm: [[70, 120], [67.5, 148], [65, 176], [63.5, 205], [62.5, 233]], armW: [12, 11.5, 10.5, 10, 9],
+         leg: [[91, 222], [90, 262], [89.5, 306], [89.5, 352], [90, 394]], legW: [16.5, 15, 13, 11.5, 10] },
+    m: { sh: 57, chest: 41, waist: 34, hip: 34.5, organK: 1.12,
+         arm: [[65, 120], [62, 148], [59.5, 176], [58, 205], [57, 233]], armW: [13.5, 13, 12, 11, 10],
+         leg: [[90.5, 222], [89.5, 262], [89, 306], [89, 352], [89.5, 394]], legW: [17.5, 16, 13.5, 12, 10.5] }
+  };
+
+  /* ---------- Small helpers ---------- */
+  function n(v) { return Math.round(v * 100) / 100; }
+  function hex(v, d) { return /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : d; }
+  function mix(a, b, t) {
+    var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), out = '#';
+    [16, 8, 0].forEach(function (s) {
+      var c = Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
+      out += ('0' + c.toString(16)).slice(-2);
+    });
+    return out;
+  }
+  /* Rewrites every x,y pair of a path that uses only M, L, C, Q and Z. */
+  function mapPath(d, fn) {
+    var tokens = d.match(/[MLCQZ]|-?\d*\.?\d+/g), out = [], buf = [];
+    tokens.forEach(function (t) {
+      if (/[MLCQZ]/.test(t)) { out.push(t); return; }
+      buf.push(Number(t));
+      if (buf.length === 2) { var p = fn(buf[0], buf[1]); out.push(n(p[0]) + ' ' + n(p[1])); buf = []; }
+    });
+    return out.join(' ');
+  }
+  function mirror(d) { return mapPath(d, function (x, y) { return [2 * CX - x, y]; }); }
+  function widen(d, k) { return k === 1 ? d : mapPath(d, function (x, y) { return [CX + (x - CX) * k, y]; }); }
+  function both(d) { return d + ' ' + mirror(d); }
+  /* A smooth path through points (Catmull-Rom). */
+  function spline(pts, closed) {
+    var d = 'M' + n(pts[0][0]) + ' ' + n(pts[0][1]), len = pts.length;
+    var last = closed ? len : len - 1;
+    for (var i = 0; i < last; i++) {
+      var p0 = pts[closed ? (i - 1 + len) % len : Math.max(i - 1, 0)], p1 = pts[i];
+      var p2 = pts[(i + 1) % len], p3 = pts[closed ? (i + 2) % len : Math.min(i + 2, len - 1)];
+      d += ' C' + n(p1[0] + (p2[0] - p0[0]) / 6) + ' ' + n(p1[1] + (p2[1] - p0[1]) / 6) + ' ' +
+           n(p2[0] - (p3[0] - p1[0]) / 6) + ' ' + n(p2[1] - (p3[1] - p1[1]) / 6) + ' ' + n(p2[0]) + ' ' + n(p2[1]);
+    }
+    return d + (closed ? ' Z' : '');
+  }
+  /* A limb outline around an axis with a half-width at each axis point. */
+  function limb(axis, widths) {
+    var left = [], right = [];
+    axis.forEach(function (p, i) {
+      var a = axis[Math.max(i - 1, 0)], b = axis[Math.min(i + 1, axis.length - 1)];
+      var dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var nx = -dy / len, ny = dx / len;
+      left.push([p[0] + nx * widths[i], p[1] + ny * widths[i]]);
+      right.push([p[0] - nx * widths[i], p[1] - ny * widths[i]]);
+    });
+    return spline(left.concat(right.reverse()), true);
+  }
+  /* Where a limb axis is at height y, and its half-width there. */
+  function at(axis, widths, y) {
+    for (var i = 0; i < axis.length - 1; i++) {
+      if (y <= axis[i + 1][1]) {
+        var t = (y - axis[i][1]) / (axis[i + 1][1] - axis[i][1]);
+        return { x: axis[i][0] + (axis[i + 1][0] - axis[i][0]) * t, w: widths[i] + (widths[i + 1] - widths[i]) * t };
+      }
+    }
+    return { x: axis[axis.length - 1][0], w: widths[widths.length - 1] };
+  }
+  function flipAxis(axis) { return axis.map(function (p) { return [2 * CX - p[0], p[1]]; }); }
+  function el(tag, attrs) {
+    var s = '<' + tag;
+    Object.keys(attrs).forEach(function (k) { if (attrs[k] !== null && attrs[k] !== undefined) { s += ' ' + k + '="' + attrs[k] + '"'; } });
+    return s + '/>';
+  }
+  function path(d, cls, extra) { var a = { d: d, 'class': cls }; if (extra) { Object.keys(extra).forEach(function (k) { a[k] = extra[k]; }); } return el('path', a); }
+  function ellipse(cx, cy, rx, ry, cls, extra) { var a = { cx: n(cx), cy: n(cy), rx: n(rx), ry: n(ry), 'class': cls }; if (extra) { Object.keys(extra).forEach(function (k) { a[k] = extra[k]; }); } return el('ellipse', a); }
+  function band(axis, widths, y, h, sag) {
+    var a = at(axis, widths, y), b = at(axis, widths, y + h);
+    return 'M' + n(a.x - a.w - 0.4) + ' ' + n(y) + ' Q' + n(a.x) + ' ' + n(y + sag) + ' ' + n(a.x + a.w + 0.4) + ' ' + n(y) +
+           ' L' + n(b.x + b.w + 0.4) + ' ' + n(y + h) + ' Q' + n(b.x) + ' ' + n(y + h + sag) + ' ' + n(b.x - b.w - 0.4) + ' ' + n(y + h) + ' Z';
+  }
+  function arcAcross(axis, widths, y, sag) {
+    var a = at(axis, widths, y);
+    return 'M' + n(a.x - a.w + 1) + ' ' + n(y) + ' Q' + n(a.x) + ' ' + n(y + sag) + ' ' + n(a.x + a.w - 1) + ' ' + n(y);
+  }
+
+  function normalize(look) {
+    look = look || {};
+    var body = look.body === 'm' ? 'm' : 'f', d = DEFAULTS[body];
+    return { body: body, skin: hex(look.skin, d.skin), shade: hex(look.shade, d.shade),
+             hair: HAIRS.indexOf(look.hair) !== -1 ? look.hair : d.hair, hairColor: hex(look.hairColor, d.hairColor),
+             beard: body === 'm' && !!look.beard };
+  }
+  function defaultLook(body) { var d = DEFAULTS[body === 'm' ? 'm' : 'f']; return { body: d.body, skin: d.skin, shade: d.shade, hair: d.hair, hairColor: d.hairColor, beard: d.beard }; }
+
+  /* ---------- The suit (decoration) ---------- */
+  function torsoPath(b) {
+    var L = [[84, 100.5], [CX - b.sh + 14, 104.5], [CX - b.sh + 6, 110], [CX - b.sh + 4, 120], [CX - b.chest - 1, 133],
+             [CX - b.chest, 146], [CX - b.chest + 1, 160], [CX - b.waist, 178], [CX - b.waist + 0.5, 190], [CX - b.hip + 1.5, 203],
+             [CX - b.hip, 215], [CX - b.hip + 2.5, 226], [97, 235]];
+    var R = L.slice().reverse().map(function (p) { return [2 * CX - p[0], p[1]]; });
+    return spline([[CX, 99.5]].concat(L, [[CX, 237]], R), true);
+  }
+  /* A sleeve: the arm with its shoulder cap, which sits over the hard upper torso like
+     a real suit's arm assembly. Its inner edge over the shoulder is the scye seam. */
+  function sleevePath(b, side) {
+    var ax = b.arm, w = b.armW, out = [], inn = [];
+    for (var i = 1; i < ax.length; i++) {
+      var a = ax[i - 1], c = ax[Math.min(i + 1, ax.length - 1)];
+      var dx = c[0] - a[0], dy = c[1] - a[1], len = Math.sqrt(dx * dx + dy * dy) || 1, nx = dy / len, ny = -dx / len;
+      out.push([ax[i][0] - nx * w[i], ax[i][1] - ny * w[i]]);
+      inn.push([ax[i][0] + nx * w[i], ax[i][1] + ny * w[i]]);
+    }
+    var pts = [[CX - b.sh + 15, 103.6], [CX - b.sh + 5, 107.4], [CX - b.sh - 0.4, 115.5]].concat(out, inn.reverse(),
+      [[CX - b.chest + 3.5, 132], [CX - b.chest + 2, 121], [CX - b.sh + 23, 108.6]]);
+    /* Mirrored and reversed, so both sleeves wind the same way as the torso and the skin tint has no holes. */
+    if (side > 0) { pts = pts.map(function (p) { return [2 * CX - p[0], p[1]]; }).reverse(); }
+    return spline(pts, true);
+  }
+  function glovePath(w, wide, side) {
+    /* side -1: left hand (thumb toward the body, on its right); +1: right hand. */
+    var x = w[0], y = w[1] + 1, k = wide, s = side;
+    var d = 'M' + n(x - 9 * k) + ' ' + n(y) + ' C' + n(x - 10.6 * k) + ' ' + n(y + 10) + ' ' + n(x - 11 * k) + ' ' + n(y + 20) + ' ' + n(x - 9 * k) + ' ' + n(y + 28) +
+            ' C' + n(x - 7.4 * k) + ' ' + n(y + 32.6) + ' ' + n(x - 1 * k) + ' ' + n(y + 34.2) + ' ' + n(x + 3 * k) + ' ' + n(y + 32.6) +
+            ' C' + n(x + 7.2 * k) + ' ' + n(y + 31) + ' ' + n(x + 9.4 * k) + ' ' + n(y + 26.4) + ' ' + n(x + 9.6 * k) + ' ' + n(y + 20) +
+            ' L' + n(x + 9.4 * k) + ' ' + n(y) + ' Z';
+    if (s > 0) { d = mapPath(d, function (px, py) { return [2 * x - px, py]; }); }
+    return d;
+  }
+  function thumbPath(w, wide, side) {
+    var x = w[0], y = w[1] + 1, k = wide;
+    var d = 'M' + n(x + 7.6 * k) + ' ' + n(y + 7) + ' C' + n(x + 12.4 * k) + ' ' + n(y + 8.6) + ' ' + n(x + 13.2 * k) + ' ' + n(y + 15) + ' ' + n(x + 11.2 * k) + ' ' + n(y + 19.6) +
+            ' C' + n(x + 10 * k) + ' ' + n(y + 22.2) + ' ' + n(x + 7.4 * k) + ' ' + n(y + 21.6) + ' ' + n(x + 7.2 * k) + ' ' + n(y + 18.8) + ' Z';
+    if (side > 0) { d = mapPath(d, function (px, py) { return [2 * x - px, py]; }); }
+    return d;
+  }
+  function bootPath(bx) {
+    return 'M' + n(bx - 10.5) + ' 392 L' + n(bx + 10.5) + ' 392 C' + n(bx + 11.5) + ' 399.5 ' + n(bx + 14) + ' 405 ' + n(bx + 14) + ' 411.5' +
+           ' C' + n(bx + 14) + ' 417 ' + n(bx + 10) + ' 421 ' + n(bx + 5) + ' 421 L' + n(bx - 5) + ' 421 C' + n(bx - 10) + ' 421 ' + n(bx - 14) + ' 417 ' + n(bx - 14) + ' 411' +
+           ' C' + n(bx - 14) + ' 405 ' + n(bx - 11.5) + ' 399.5 ' + n(bx - 10.5) + ' 392 Z';
+  }
+
+  function suit(b) {
+    var s = '';
+    var armL = b.arm, armR = flipAxis(b.arm), legL = b.leg, legR = flipAxis(b.leg);
+    /* Life-support backpack, seen behind the shoulders */
+    s += ellipse(CX, 421, 58, 4.2, 'f-ground');
+    s += el('rect', { x: CX - b.chest - 2, y: 84, width: 2 * (b.chest + 2), height: 84, rx: 10, 'class': 'f-pack' });
+    /* Legs and boots: knee bellows at 296-310, ankle bearing at 384 */
+    [[legL, -1], [legR, 1]].forEach(function (pair) {
+      var ax = pair[0], side = pair[1], last = ax[ax.length - 1];
+      s += path(limb(ax, b.legW), side < 0 ? 'f-suit' : 'f-suit f-suit--r') + path(limb(ax, b.legW), 'f-vshade');
+      [296, 303, 310].forEach(function (y) { s += path(arcAcross(ax, b.legW, y, 3.6), 'f-seam'); });
+      s += path('M' + n(at(ax, b.legW, 238).x + side * 7) + ' 238 Q' + n(at(ax, b.legW, 258).x + side * 8) + ' 258 ' + n(at(ax, b.legW, 278).x + side * 6) + ' 278', 'f-fold');
+      s += path('M' + n(at(ax, b.legW, 326).x - side * 5) + ' 326 Q' + n(at(ax, b.legW, 340).x - side * 6.5) + ' 340 ' + n(at(ax, b.legW, 354).x - side * 5) + ' 356', 'f-fold');
+      s += path(band(ax, b.legW, 384, 7, 1.6), 'f-joint');
+      s += path(bootPath(last[0]), 'f-boot');
+      s += el('rect', { x: n(last[0] - 14.6), y: 415.5, width: 29.2, height: 5.6, rx: 2.8, 'class': 'f-sole' });
+      s += path('M' + n(last[0] - 11) + ' 406 Q' + n(last[0]) + ' 402 ' + n(last[0] + 11) + ' 406', 'f-seam');
+    });
+    /* Torso: the hard upper torso ends at 160, the waist bearing is at 179-190 */
+    var torso = torsoPath(b);
+    s += path(torso, 'f-suit') + path(torso, 'f-vshade');
+    s += path('M' + (CX - b.chest + 2) + ' 160 Q' + CX + ' 174 ' + (CX + b.chest - 2) + ' 160', 'f-seam');
+    s += path('M' + (CX - b.waist - 1.5) + ' 179 Q' + CX + ' 184.5 ' + (CX + b.waist + 1.5) + ' 179 L' + (CX + b.waist + 1) + ' 190 Q' + CX + ' 195.5 ' + (CX - b.waist - 1) + ' 190 Z', 'f-joint');
+    s += path('M' + (CX - b.hip + 3) + ' 206 Q' + (CX - 18) + ' 212 ' + (CX - 3) + ' 210 M' + (CX + b.hip - 3) + ' 206 Q' + (CX + 18) + ' 212 ' + (CX + 3) + ' 210', 'f-seam');
+    s += path('M' + CX + ' 196 L' + CX + ' 236', 'f-fold');
+    s += el('circle', { cx: CX - b.waist + 6, cy: 170, r: 3.2, 'class': 'f-joint' }) + el('circle', { cx: CX + b.waist - 6, cy: 170, r: 3.2, 'class': 'f-joint' });
+    /* Sleeves with shoulder caps, the shoulder bearing, elbow bellows, wrist bearing and gloves */
+    var sleeves = [sleevePath(b, -1), sleevePath(b, 1)];
+    [[armL, -1], [armR, 1]].forEach(function (pair, i) {
+      var ax = pair[0], side = pair[1], wr = ax[ax.length - 1], k = b.armW[0] / 12.5;
+      s += path(sleeves[i], side < 0 ? 'f-suit' : 'f-suit f-suit--r') + path(sleeves[i], 'f-vshade');
+      s += path(band(ax, b.armW, 127, 4.6, 1.6), 'f-joint');
+      [166, 172.5, 179].forEach(function (y) { s += path(arcAcross(ax, b.armW, y, 3), 'f-seam'); });
+      s += path('M' + n(at(ax, b.armW, 188).x - side * 4) + ' 188 Q' + n(at(ax, b.armW, 204).x - side * 5.5) + ' 204 ' + n(at(ax, b.armW, 218).x - side * 4) + ' 220', 'f-fold');
+      /* Patch on each upper arm: a flag-like tape on the left, a round mission patch on the right */
+      var pa = at(ax, b.armW, 147);
+      if (side < 0) { s += el('rect', { x: n(pa.x - 6), y: 142, width: 12, height: 8, rx: 1.2, 'class': 'f-patch' }) + path('M' + n(pa.x - 6) + ' 144.7 L' + n(pa.x + 6) + ' 144.7 M' + n(pa.x - 6) + ' 147.4 L' + n(pa.x + 6) + ' 147.4', 'f-patch-line'); }
+      else { s += el('circle', { cx: n(pa.x), cy: 146, r: 5.4, 'class': 'f-patch' }) + el('circle', { cx: n(pa.x), cy: 146, r: 3.2, 'class': 'f-patch-line' }) + el('circle', { cx: n(pa.x + 1.3), cy: 144.8, r: 0.9, 'class': 'f-patch-dot' }); }
+      s += path(band(ax, b.armW, 225, 7.5, 1.6), 'f-joint');
+      s += path(glovePath(wr, k, side), 'f-glove') + path(thumbPath(wr, k, side), 'f-glove');
+      s += path('M' + n(wr[0] - 3 * k * -side) + ' ' + n(wr[1] + 24) + ' L' + n(wr[0] - 3 * k * -side) + ' ' + n(wr[1] + 32) +
+                ' M' + n(wr[0] + 1 * k * -side) + ' ' + n(wr[1] + 25) + ' L' + n(wr[0] + 1 * k * -side) + ' ' + n(wr[1] + 33.5), 'f-fold');
+    });
+    return { art: s, torso: torso,
+             upper: [torso, sleeves[0], sleeves[1], glovePath(armL[armL.length - 1], b.armW[0] / 12.5, -1), glovePath(armR[armR.length - 1], b.armW[0] / 12.5, 1)].join(' ') };
+  }
+
+  /* ---------- Head, face and hair (decoration) ---------- */
+  /* A closed outline around (cx, cy) whose radius ripples, for curly hair. */
+  function ripple(cx, cy, rx, ry, waves, amp, from, to) {
+    var pts = [], steps = 72;
+    for (var i = 0; i <= steps; i++) {
+      var a = (from + (to - from) * i / steps) * Math.PI / 180, k = 1 + amp * Math.cos(waves * a);
+      pts.push([cx + rx * k * Math.cos(a), cy - ry * k * Math.sin(a)]);
+    }
+    return pts;
+  }
+  function hairBack(L) {
+    var f = { fill: L.hairColor };
+    if (L.hair === 'long') { return path('M88.6 44 C87.4 58 86.8 72 88.4 86 C89 90.4 91.8 93 96 93 L124 93 C128.2 93 131 90.4 131.6 86 C133.2 72 132.6 58 131.4 44 C129.8 31.5 121.5 24.5 110 24.5 C98.5 24.5 90.2 31.5 88.6 44 Z', 'f-hair', f); }
+    if (L.hair === 'curly') { return path(spline(ripple(CX, 49, 27, 29.5, 15, 0.05, -38, 218), true), 'f-hair', f); }
+    if (L.hair === 'bun') { return el('circle', { cx: CX, cy: 22, r: 8.4, 'class': 'f-hair', fill: L.hairColor }); }
+    return '';
+  }
+  function hairFront(L) {
+    var f = { fill: L.hairColor }, hl = 'f-hair-hl';
+    if (L.hair === 'long') {
+      var side = 'M110 27.4 C102.4 27.2 95.4 31.2 92.5 38.6 C90.5 43.9 89.5 50.2 89.3 57.2 C89.1 66.2 89.5 76.2 91.1 86.4 L94.7 86.4 C93.3 76.6 92.7 66.6 93.1 58.1 C93.5 50.2 94.8 44.2 97.8 40 C101.1 35.2 105.6 32.6 110 31.8 Z';
+      return path(both(side), 'f-hair', f) + path('M103 31.5 C99 34.5 96.4 39.5 95.4 45.5 M117 31.5 C121 34.5 123.6 39.5 124.6 45.5', hl);
+    }
+    if (L.hair === 'bun') {
+      return path('M90.4 51 C89.6 36.5 98.6 27.2 110 27.2 C121.4 27.2 130.4 36.5 129.6 51 C128.6 45.4 126.6 41.6 122.8 38.8 C117.6 35 107 34.6 100.6 37.4 C95.4 39.7 92 44.6 90.4 51 Z', 'f-hair', f) +
+             path('M103.2 28.4 C101.2 31 100.2 34 100.6 37.4 M112 30 C117 31 121.6 33.4 124.6 37.4', hl) +
+             path('M104.6 28.8 Q110 26.4 115.4 28.8', 'f-hair-tie') + path('M104.6 19.5 C106.6 16.8 112.4 16.6 115 19.6 M103.6 23.6 C106.6 25.6 113.2 25.6 116.4 23.4', hl);
+    }
+    if (L.hair === 'curly') {
+      /* A curly fringe over the top of the forehead, and a few curls for texture */
+      var top = ripple(CX, 47, 21.6, 21.4, 13, 0.06, 18, 162);
+      var under = ripple(CX, 52, 15.6, 17.6, 11, 0.07, 150, 30);
+      var s = path(spline(top.concat(under), true), 'f-hair', f);
+      [[96, 29], [104, 25], [113, 24.6], [122, 27.6], [88.6, 40], [131.2, 40], [86.6, 52], [133.4, 53], [87.6, 64], [132.4, 65], [99.4, 33.2], [118.6, 32.4]].forEach(function (p) {
+        s += path('M' + n(p[0] - 2.4) + ' ' + n(p[1] + 0.8) + ' C' + n(p[0] - 1.6) + ' ' + n(p[1] - 1.8) + ' ' + n(p[0] + 1.8) + ' ' + n(p[1] - 1.8) + ' ' + n(p[0] + 2.4) + ' ' + n(p[1] + 0.4), hl);
+      });
+      return s;
+    }
+    if (L.hair === 'short') {
+      return path('M89.6 50 C88.6 40 92 30.5 101 26.8 C106 24.8 114 24.6 119.4 26.6 C128 29.8 131.6 39 130.4 50 C129.6 45.2 128.4 41.6 126.2 39.6 C124.6 38.2 122.8 37.4 120.6 37.8 C117.4 36.2 113.6 35.6 110 35.8 C106.4 35.6 102.6 36.2 99.4 37.8 C97.2 37.4 95.4 38.2 93.8 39.6 C91.6 41.6 90.4 45.2 89.6 50 Z', 'f-hair', f) +
+             path('M97 30.6 C101.6 28.4 106.4 27.8 111 28.2 M114.6 28.6 C119.4 29.4 123.6 31.4 126.4 34.6 M100.6 33.6 C104.6 32 108.4 31.6 112 31.8', hl);
+    }
+    return '';
+  }
+  function head(L, ids) {
+    var m = L.body === 'm', s = '', clips = '';
+    var lip = mix(L.shade, '#8a4943', 0.42), dark = mix(L.hairColor, '#000000', 0.3);
+    s += hairBack(L);
+    s += path(m ? 'M101.6 66 L118.4 66 L119 97 L101 97 Z' : 'M103.2 66 L116.8 66 L117.4 97 L102.6 97 Z', 'f-neck');
+    s += ellipse(CX, m ? 82.6 : 81.2, m ? 9.5 : 8.6, 3.2, 'f-chinshade');
+    if (L.hair === 'short' || L.hair === 'bun') {
+      var ex = m ? 88.8 : 90.4, ery = m ? 6 : 5.4;
+      s += ellipse(ex, 55.5, m ? 3 : 2.6, ery, 'f-ear') + ellipse(2 * CX - ex, 55.5, m ? 3 : 2.6, ery, 'f-ear');
+    }
+    s += path(m ? 'M110 28 C122.4 28 131 36.5 131 49.5 C131 59.5 129.8 66.8 126.6 72.4 C123 78.4 116.8 81.5 110 81.5 C103.2 81.5 97 78.4 93.4 72.4 C90.2 66.8 89 59.5 89 49.5 C89 36.5 97.6 28 110 28 Z'
+                : 'M110 29 C121.2 29 129.5 37.5 129.5 50 C129.5 59.5 127.6 66.5 123.8 71.8 C120.2 76.6 115.4 80 110 80 C104.6 80 99.8 76.6 96.2 71.8 C92.4 66.5 90.5 59.5 90.5 50 C90.5 37.5 98.8 29 110 29 Z', 'f-face');
+    s += path(m ? 'M127.6 58 C127 66.5 122 75.5 112 79.8' : 'M126.6 58.5 C126 66 121.4 74.4 112 78.4', 'f-jawshade');
+    /* Eyes: the iris is clipped by the eye opening, so the upper lid covers its top */
+    [-1, 1].forEach(function (side, i) {
+      var x = m ? (side < 0 ? 101.7 : 118.3) : (side < 0 ? 102 : 118), y = 54.6, w = m ? 3.8 : 4, h = m ? 1.45 : 1.6;
+      var eye = 'M' + n(x - w) + ' ' + n(y + 0.25) + ' C' + n(x - w * 0.6) + ' ' + n(y - h * 1.15) + ' ' + n(x + w * 0.6) + ' ' + n(y - h * 1.2) + ' ' + n(x + w) + ' ' + n(y - 0.15) +
+                ' C' + n(x + w * 0.6) + ' ' + n(y + h * 0.95) + ' ' + n(x - w * 0.6) + ' ' + n(y + h) + ' ' + n(x - w) + ' ' + n(y + 0.25) + ' Z';
+      var id = ids.eye + i;
+      clips += '<clipPath id="' + id + '"><path d="' + eye + '"/></clipPath>';
+      s += path(eye, 'f-eyewhite');
+      s += '<g clip-path="url(#' + id + ')">' + el('circle', { cx: n(x + 0.15), cy: n(y - 0.15), r: m ? 1.85 : 1.95, 'class': 'f-iris' }) +
+           el('circle', { cx: n(x + 0.15), cy: n(y - 0.15), r: 0.9, 'class': 'f-pupil' }) + '</g>';
+      s += el('circle', { cx: n(x + 0.75), cy: n(y - 0.75), r: 0.48, 'class': 'f-glint' });
+      s += path('M' + n(x - w - 0.35) + ' ' + n(y + 0.2) + ' C' + n(x - w * 0.6) + ' ' + n(y - h * 1.3 - 0.4) + ' ' + n(x + w * 0.6) + ' ' + n(y - h * 1.35 - 0.4) + ' ' + n(x + w + 0.35) + ' ' + n(y - 0.25), 'f-lid', { stroke: dark });
+      s += path('M' + n(x - w * 0.7) + ' ' + n(y + h * 0.95) + ' C' + n(x - w * 0.2) + ' ' + n(y + h * 1.3) + ' ' + n(x + w * 0.3) + ' ' + n(y + h * 1.3) + ' ' + n(x + w * 0.75) + ' ' + n(y + h * 0.8), 'f-lowlid', { stroke: L.shade });
+      if (!m) { var ox = side < 0 ? x - w - 0.35 : x + w + 0.35; s += path('M' + n(ox) + ' ' + n(y + (side < 0 ? 0.2 : -0.25)) + ' L' + n(ox + side * 1.2) + ' ' + n(y - 1.1), 'f-lid', { stroke: dark }); }
+      var brow = m ? 'M96.4 50 C99.2 48.2 103.8 47.8 107.2 49' : 'M97 49.9 C99.4 47.5 103.8 47.1 106.7 48.6';
+      s += path(side < 0 ? brow : mirror(brow), m ? 'f-brow f-brow--m' : 'f-brow', { stroke: L.hairColor });
+    });
+    /* Nose and mouth */
+    s += path('M111.4 55.2 C112 58.6 113.4 61.2 112.6 63.4', 'f-noseline', { stroke: L.shade });
+    s += path('M107 63.8 C108.2 64.9 111.8 64.9 113 63.8', 'f-noseline', { stroke: L.shade });
+    s += ellipse(110.1, 62.4, 1.3, 0.9, 'f-nosehl');
+    if (m) {
+      s += path('M105.2 70.6 C107.8 71.4 112.2 71.4 114.8 70.6', 'f-mouth', { stroke: mix(lip, '#000000', 0.35) });
+      s += path('M106.6 71.9 C108.6 73.2 111.4 73.2 113.4 71.9', 'f-lipshade', { stroke: lip });
+    } else {
+      s += path('M104.8 70.1 C106.7 69 108.6 68.7 110 69.4 C111.4 68.7 113.3 69 115.2 70.1 C113 70.9 107 70.9 104.8 70.1 Z', 'f-lip', { fill: lip });
+      s += path('M105.2 70.4 C107 70.9 113 70.9 114.8 70.4 C113.6 73.3 106.4 73.3 105.2 70.4 Z', 'f-lip', { fill: mix(lip, '#ffffff', 0.08) });
+      s += path('M104.9 70.3 C107.5 71 112.5 71 115.1 70.3', 'f-mouth', { stroke: mix(lip, '#000000', 0.38) });
+    }
+    if (L.beard) {
+      s += path('M89.6 56 C89.8 64 91.6 70.5 95.5 75.5 C99.5 80.5 104.5 83 110 83 C115.5 83 120.5 80.5 124.5 75.5 C128.4 70.5 130.2 64 130.4 56 L128.4 56.6 C128 62.6 126 66.8 121.8 69.4 C118.8 71.2 116.2 72.6 114.6 73.6 C112.6 74.6 107.4 74.6 105.4 73.6 C103.8 72.6 101.2 71.2 98.2 69.4 C94 66.8 92 62.6 91.6 56.6 Z', 'f-beard', { fill: L.hairColor });
+      s += path('M103.6 69.1 C106 67.4 108.6 67.2 110 67.9 C111.4 67.2 114 67.4 116.4 69.1 C114.2 69.2 112 68.9 110 69.5 C108 68.9 105.8 69.2 103.6 69.1 Z', 'f-beard', { fill: L.hairColor });
+    }
+    s += hairFront(L);
+    return { art: s, clips: clips };
+  }
+
+  /* ---------- Body systems (the scan layer) ---------- */
+  function tube(d, cls) { return path(d, 'bp-tube-o ' + cls) + path(d, 'bp-tube-i ' + cls); }
+  function organs(b) {
+    var k = b.organK, o = {};
+    /* Chest, to scale (0.6.0): the apices sit just above the clavicles, the bases on the
+       domes of the diaphragm. Right lung (on the viewer's left): three lobes, two fissures.
+       Left lung: two lobes and the cardiac notch. */
+    var lungR = spline([[99, 106], [90.4, 111.6], [84.4, 123.6], [80.8, 139.4], [80, 151.6], [84.6, 156], [92.6, 154], [99.8, 150.8],
+                        [104.2, 146], [104.8, 132], [103.8, 116], [101.8, 108.4]], true);
+    var lungL = spline([[121, 106], [129.6, 111.6], [135.6, 123.6], [139.2, 139.4], [140, 151.6], [135.4, 156], [128.6, 154.6], [123.6, 152.6],
+                        [121.2, 148.6], [122.4, 142.6], [119.4, 136.8], [116, 132.4], [115.2, 123], [116.2, 112], [118.2, 108.4]], true);
+    var airway = 'M108 98 L112 98 L112 116 C114.2 117.4 116.4 120.2 117.8 123.6 L115.6 124.6 C114.4 122 112.4 119.6 110 118.6 C107.6 119.6 105.6 122 104.4 124.6 L102.2 123.6 C103.6 120.2 105.8 117.4 108 116 Z';
+    o.lungs = [path(widen(lungR, k), 'bp-shape'), path(widen(lungL, k), 'bp-shape'), path(airway, 'bp-shape'),
+               path(widen('M81.4 132.6 C89 131.8 96.6 130.6 104.6 129.4 M80.6 147.6 C88 141 96 133 104.6 123.6 M139.4 146.4 C132 140 124 132 115.4 123.6', k), 'bp-detail'),
+               path('M108.6 101.4 L111.4 101.4 M108.6 105.2 L111.4 105.2 M108.6 109 L111.4 109 M108.6 112.8 L111.4 112.8', 'bp-detail')].join('');
+    /* Heart: about 12 cm long, apex down and to the left (the viewer's right) at the 5th intercostal space */
+    var heart = spline([[106.4, 124.6], [103.6, 130], [103.8, 138], [106.8, 144.6], [112, 148.8], [118.6, 151.4], [124.4, 151.2],
+                        [126.2, 145.6], [125.6, 137.6], [122.4, 130], [117.6, 125.2], [111.6, 124]], true);
+    o.heart = [path(heart, 'bp-shape'), path('M116.8 126.4 C116 135 118.2 143.6 122.6 150.4 M106.4 131.4 C109.4 129.8 112.6 129.6 116 130.6', 'bp-detail')].join('');
+    /* Upper abdomen: liver under the right dome, stomach under the left */
+    var liver = spline([[79.4, 152], [86.4, 147.4], [96.4, 146], [106.2, 147], [114.2, 149], [121.6, 151.2], [123, 153.8], [118.2, 156.6],
+                        [110, 160.4], [100, 165.6], [91, 170], [84, 171.4], [79.6, 168.4], [77.8, 161]], true);
+    var stomach = spline([[121.4, 152.4], [127.2, 148.6], [135, 149.6], [140, 155.2], [141, 164], [138.6, 172.6], [133, 178.4], [125, 181],
+                          [117.6, 180], [113, 176.4], [113.6, 172.8], [117.4, 172.6], [122.6, 171.8], [126.6, 167.6], [127.4, 161.4],
+                          [125.4, 157], [121.8, 155.4]], true);
+    /* Colon frame: cecum low on the right, flexures under the liver and the spleen, sigmoid to the midline */
+    var colon = 'M89 222 L89 193.6 C89 189.4 92 187 96.4 187 L123.6 186 C128 186 131 188.6 131 193 L131 217 C131 222 128 225.4 123.6 226.4 L114 229.4';
+    var small = 'M99 195.2 L121 195.2 C124 195.2 124 201 121 201 L99 201 C96 201 96 206.8 99 206.8 L121 206.8 C124 206.8 124 212.6 121 212.6 L99 212.6 C96 212.6 96 218.4 99 218.4 L118 218.4';
+    o.metabolic = [el('rect', { x: n(CX - 25 * k), y: 145, width: n(50 * k), height: 83, 'class': 'bp-hit' }),
+                   tube(widen(colon, k), 'bp-tube--colon'), tube(widen(small, k), 'bp-tube--small'),
+                   path(widen(stomach, k), 'bp-shape'), path(widen(liver, k), 'bp-shape')].join('');
+    var neck = [[103.4, 85.6, 1.5, 1.9], [103, 91, 1.4, 1.8]], arm = [[CX - b.chest + 4.5, 126.5, 1.8, 2.2], [CX - b.chest + 6.5, 132.5, 1.6, 2]];
+    function pair(p) { return ellipse(p[0], p[1], p[2], p[3], 'bp-shape bp-node') + ellipse(2 * CX - p[0], p[1], p[2], p[3], 'bp-shape bp-node'); }
+    o.immune = '<g transform="' + HEAD_T + '">' + el('rect', { x: 92, y: 74, width: 36, height: 30, 'class': 'bp-hit' }) + neck.map(pair).join('') + '</g>' + arm.map(pair).join('');
+    /* Bones and muscles (0.6.0). Weight-bearing bone is lost fastest in flight at the hip and
+       the lumbar spine, and the antigravity muscles of the thigh and calf shrink the most, so
+       the system shows the lumbar spine, the pelvis, both legs and the thigh and calf muscles.
+       Drawn for the viewer's left side (the right leg) and mirrored. */
+    var thigh = spline([[86, 226.4], [80.8, 236.4], [78.4, 254], [79.2, 274], [82.6, 290.6], [87.2, 296.8], [92.4, 296.4], [97.4, 291.6],
+                        [99.2, 283.4], [98.4, 266], [97, 246], [96.2, 232], [93.6, 226], [89.8, 223.8]], true);
+    var calf = spline([[84.2, 318.6], [80.6, 330], [80, 346], [82.2, 362], [85.8, 373.6], [89.6, 377.4], [93.4, 372], [97, 358],
+                       [97.8, 340], [96.6, 326], [94.2, 318.6], [89.4, 316.8]], true);
+    var femur = spline([[92.6, 208.8], [96.6, 210.8], [97.8, 214.8], [95.8, 218.8], [92.4, 221.4], [91.6, 225.8], [90.4, 231], [90.8, 262],
+                        [91.8, 289.6], [95.2, 297.6], [96, 304.8], [93.8, 310], [91.2, 309.4], [89.6, 307.2], [88, 309.4], [85.4, 310],
+                        [83.2, 305], [83.8, 297.8], [86.6, 289.6], [85.6, 262], [84.8, 232], [82.6, 225], [82.4, 218.4], [85, 215.4],
+                        [88, 216], [89.8, 211.6]], true);
+    var tibia = spline([[83, 313.4], [89.6, 312.2], [96.4, 313.4], [96.8, 316.8], [93.2, 321.4], [91.8, 330], [91.4, 384], [93.4, 392],
+                        [93.6, 398.6], [90.6, 400], [88, 396.6], [87.6, 386], [87.4, 330], [86.4, 322], [83.2, 317.8]], true);
+    var fibula = spline([[80.6, 318.6], [83.4, 318.2], [84.2, 321.6], [83.2, 325], [84.4, 380], [85.4, 392], [85.6, 401.4], [83.2, 403.2],
+                         [81.4, 400.8], [81.8, 392], [82.2, 380], [81, 324.6], [80, 321.4]], true);
+    var hipBone = spline([[100.6, 199], [95, 191.6], [87, 188.6], [80.6, 191.4], [78, 197.6], [80, 204], [83.6, 208.6], [85, 214], [86.6, 221],
+                          [89, 230], [92.4, 236.4], [98, 236.4], [104.4, 233.4], [108.6, 230.4], [108.6, 225], [104, 223], [98.6, 221.4],
+                          [96.6, 216], [97.6, 208], [100.4, 203]], true);
+    var sacrum = spline([[101.4, 198.4], [110, 197.4], [118.6, 198.4], [116.4, 211.6], [113, 223.4], [110, 228], [107, 223.4], [103.6, 211.6]], true);
+    var lumbar = '', procs = '';
+    [160, 167.4, 174.8, 182.2, 189.6].forEach(function (y, i) {
+      var w = 5.4 + i * 0.35;
+      lumbar += 'M' + n(CX - w) + ' ' + n(y + 1) + ' Q' + n(CX - w) + ' ' + n(y) + ' ' + n(CX - w + 1) + ' ' + n(y) + ' L' + n(CX + w - 1) + ' ' + n(y) +
+                ' Q' + n(CX + w) + ' ' + n(y) + ' ' + n(CX + w) + ' ' + n(y + 1) + ' L' + n(CX + w) + ' ' + n(y + 5) + ' Q' + n(CX + w) + ' ' + n(y + 6) + ' ' +
+                n(CX + w - 1) + ' ' + n(y + 6) + ' L' + n(CX - w + 1) + ' ' + n(y + 6) + ' Q' + n(CX - w) + ' ' + n(y + 6) + ' ' + n(CX - w) + ' ' + n(y + 5) + ' Z ';
+      procs += 'M' + n(CX - w - 4.6) + ' ' + n(y + 3) + ' L' + n(CX - w) + ' ' + n(y + 3) + ' M' + n(CX + w) + ' ' + n(y + 3) + ' L' + n(CX + w + 4.6) + ' ' + n(y + 3) + ' ';
+    });
+    var legHit = 'M' + (CX - b.hip - 1) + ' 214 L' + (CX - 2) + ' 214 L' + (CX - 2) + ' 422 L' + (CX - b.hip - 6) + ' 422 Z';
+    o.msk = path(both(legHit), 'bp-hit') + el('rect', { x: CX - 36, y: 156, width: 72, height: 82, 'class': 'bp-hit' }) +
+            path(both(thigh), 'bp-shape bp-muscle') + path(both(calf), 'bp-shape bp-muscle') +
+            path(both('M86.4 240 C85 256 85.6 272 88.6 286 M93.8 240 C95.8 258 96 274 94.4 288 M84 330 C83.2 342 84 354 86.4 366 M95.2 330 C95.8 342 95.2 354 93 366'), 'bp-detail') +
+            path(lumbar, 'bp-shape bp-spine') + path(procs, 'bp-detail') + path(both(hipBone), 'bp-shape bp-pelvis') + path(sacrum, 'bp-shape bp-pelvis') +
+            path('M103.6 204 L116.4 204 M104.8 210 L115.2 210 M106 216 L114 216', 'bp-detail') +
+            ellipse(99.4, 227.6, 3.6, 3.2, 'bp-detail') + ellipse(2 * CX - 99.4, 227.6, 3.6, 3.2, 'bp-detail') +
+            [femur, tibia, fibula].map(function (d) { return path(d, 'bp-shape') + path(mirror(d), 'bp-shape'); }).join('') +
+            ellipse(89.6, 300.6, 4.4, 5.4, 'bp-shape bp-patella') + ellipse(2 * CX - 89.6, 300.6, 4.4, 5.4, 'bp-shape bp-patella');
+    var brain = 'M110 26.6 C99.2 25.8 91.6 32.6 91.4 41 C91.3 45.6 94.6 48.2 100.2 47.6 C104.4 47.2 107.6 47.8 110 48.6 C112.4 47.8 115.6 47.2 119.8 47.6 C125.4 48.2 128.7 45.6 128.6 41 C128.4 32.6 120.8 25.8 110 26.6 Z';
+    o.brain = '<g transform="' + HEAD_T + '">' + el('rect', { x: 88, y: 12, width: 44, height: 36, 'class': 'bp-hit' }) + path(brain, 'bp-shape') +
+              path('M110 27.4 L110 47.8 M95.2 36 C97.6 33.4 100.4 37.4 103.2 34.4 C105 32.6 106.6 33.8 107.6 32.4 M94.2 42.6 C97.2 40.4 99.8 44 103 41.4 C105 39.8 106.4 41.8 108 40.6 M124.8 36 C122.4 33.4 119.6 37.4 116.8 34.4 C115 32.6 113.4 33.8 112.4 32.4 M125.8 42.6 C122.8 40.4 120.2 44 117 41.4 C115 39.8 113.6 41.8 112 40.6', 'bp-detail') + '</g>';
+    var ex = b === BODY.m ? 101.7 : 102;
+    o.eyes = '<g transform="' + HEAD_T + '">' + el('rect', { x: 93, y: 48.6, width: 34, height: 12.6, 'class': 'bp-hit' }) + ellipse(ex, 54.6, 6.4, 4.4, 'bp-ring') + ellipse(2 * CX - ex, 54.6, 6.4, 4.4, 'bp-ring') + '</g>';
+    o.face = '<g transform="' + HEAD_T + '">' + el('ellipse', { cx: CX, cy: 66, rx: 20, ry: 15, 'class': 'bp-hit' }) + '</g>';
+    return o;
+  }
+
+  /* ---------- Helmet (decoration, in front) ---------- */
+  function helmet() {
+    var s = '';
+    s += ellipse(CX, 55, 40, 44, 'f-glass');
+    s += path('M77.4 44 C78.4 30 90 17.6 106 15.2', 'f-glare');
+    s += path('M81.6 58 C81 54 81.2 50.4 82 47.4', 'f-glare f-glare--2');
+    s += ellipse(139.4, 32, 2.6, 6.4, 'f-glare-dot', { transform: 'rotate(28 139.4 32)' });
+    return s;
+  }
+
+  /* wrap(id, inner) is supplied by the app and returns the region's link. */
+  function svg(look, wrap, label) {
+    var L = normalize(look), b = BODY[L.body], st = suit(b), o = organs(b), hd = head(L, { eye: 'cw-eye' });
+    var light = mix(L.skin, '#ffffff', 0.06);
+    var defs = '<defs>' +
+      '<pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" class="hatch-line"/></pattern>' +
+      '<filter id="cwglow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+      '<linearGradient id="cw-suit" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s-lo2"/><stop offset=".32" class="s-hi"/><stop offset=".72" class="s-mid"/><stop offset="1" class="s-lo"/></linearGradient>' +
+      '<linearGradient id="cw-suit-r" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="s-hi"/><stop offset=".45" class="s-mid"/><stop offset="1" class="s-lo"/></linearGradient>' +
+      '<linearGradient id="cw-joint" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="j-hi"/><stop offset="1" class="j-lo"/></linearGradient>' +
+      '<linearGradient id="cw-glove" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="g-hi"/><stop offset="1" class="g-lo"/></linearGradient>' +
+      '<linearGradient id="cw-boot" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="b-hi"/><stop offset="1" class="b-lo"/></linearGradient>' +
+      '<linearGradient id="cw-pack" x1="0" x2="1" y1="0" y2="0"><stop offset="0" class="p-hi"/><stop offset="1" class="p-lo"/></linearGradient>' +
+      '<radialGradient id="cw-glass" cx=".42" cy=".36" r=".72"><stop offset="0" class="gl-0"/><stop offset=".72" class="gl-1"/><stop offset="1" class="gl-2"/></radialGradient>' +
+      '<radialGradient id="cw-face" cx=".44" cy=".42" r=".74"><stop offset="0" stop-color="' + light + '"/><stop offset=".5" stop-color="' + L.skin + '"/><stop offset="1" stop-color="' + L.shade + '"/></radialGradient>' +
+      '<linearGradient id="cw-neck" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="' + L.skin + '"/><stop offset="1" stop-color="' + L.shade + '"/></linearGradient>' +
+      '<linearGradient id="cw-vshade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="vs-0"/><stop offset="1" class="vs-1"/></linearGradient>' + hd.clips +
+      '</defs>';
+    var art = '<g class="fig-art" aria-hidden="true">' + st.art +
+      '<ellipse cx="110" cy="99" rx="27" ry="6.5" class="f-ring"/><g transform="' + HEAD_T + '">' + hd.art + '</g>' +
+      '<path d="M83 99 C83 107.6 137 107.6 137 99" class="f-ring f-ring--front"/></g>';
+    var parts = wrap('skin', o.face + path(st.upper, 'bp-tint')) +
+      wrap('msk', o.msk) + wrap('metabolic', o.metabolic) + wrap('lungs', o.lungs) + wrap('heart', o.heart) +
+      wrap('immune', o.immune) + wrap('eyes', o.eyes) + wrap('brain', o.brain);
+    return '<svg viewBox="0 0 220 432" role="group" data-figure="' + L.body + '" aria-label="' + label + '">' + defs + art + parts +
+      '<g class="fig-glass" aria-hidden="true">' + helmet() + '</g>' +
+      '<text x="110" y="430" text-anchor="middle" class="fig-note">AI-generated illustration</text></svg>';
+  }
+
+  return { svg: svg, normalize: normalize, defaultLook: defaultLook, HAIRS: HAIRS };
+});
